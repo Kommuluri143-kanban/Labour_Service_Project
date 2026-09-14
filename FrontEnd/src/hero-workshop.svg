@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 620" role="img" aria-labelledby="title desc">
+  <title id="title">A local maker preparing tools</title>
+  <desc id="desc">Original flat illustration of a maker, workbench, tools and a house outline.</desc>
+  <rect width="900" height="620" fill="#d9ebe4"/>
+  <circle cx="730" cy="120" r="92" fill="#f5c95d" opacity=".75"/>
+  <path d="M0 436c137-80 238-53 350 9 119 66 238 54 550-48v223H0z" fill="#bdd7cb"/>
+  <path d="M88 248 245 116l157 132v202H88z" fill="#f7f5f0" stroke="#216b68" stroke-width="10"/>
+  <path d="m62 255 183-158 183 158" fill="none" stroke="#154f4d" stroke-linecap="round" stroke-linejoin="round" stroke-width="14"/>
+  <path d="M183 450V318h101v132" fill="#f5c95d" stroke="#216b68" stroke-width="9"/>
+  <path d="M330 313h55v58h-55z" fill="#d98a5e" stroke="#216b68" stroke-width="8"/>
+  <path d="M505 451h288" stroke="#154f4d" stroke-linecap="round" stroke-width="24"/>
+  <path d="M536 451V291h188v160" fill="#c67f5d" stroke="#154f4d" stroke-width="12"/>
+  <path d="M563 330h135M563 375h135" stroke="#eeeadf" stroke-width="9"/>
+  <circle cx="600" cy="166" r="57" fill="#d98a5e"/>
+  <path d="M549 163c4-69 106-76 116 2-24-20-74-18-116-2z" fill="#154f4d"/>
+  <path d="M558 224c-20 31-33 78-33 125h164c-7-60-29-103-56-125-22 18-50 19-75 0z" fill="#216b68"/>
+  <path d="M558 263 488 351M637 264l89 86" fill="none" stroke="#d98a5e" stroke-linecap="round" stroke-width="28"/>
+  <path d="m474 352 38-36 42 41-39 35z" fill="#f5c95d" stroke="#154f4d" stroke-width="8"/>
+  <path d="M451 466h407" stroke="#154f4d" stroke-width="14"/>
+  <circle cx="758" cy="466" r="22" fill="#f5c95d" stroke="#154f4d" stroke-width="8"/>
+  <path d="M745 466h-70M758 453v-56" stroke="#154f4d" stroke-linecap="round" stroke-width="9"/>
+</svg>
