@@ -26,6 +26,7 @@ a { color: inherit; text-decoration: none; }
 .profile-close { display: grid; place-items: center; width: 28px; height: 28px; border: 0; border-radius: 50%; color: var(--muted); background: transparent; }.profile-close:hover { color: var(--ink); background: var(--cream); }
 .profile-preview { display: flex; align-items: center; gap: 13px; margin: 19px 0; padding: 13px; border: 1px solid var(--line); border-radius: 6px; background: #fff; }.profile-preview img { width: 58px; height: 58px; flex: 0 0 58px; object-fit: cover; border-radius: 50%; background: var(--cream); }.profile-preview strong, .profile-preview span, .profile-preview small { display: block; }.profile-preview strong { font-size: 16px; }.profile-preview span { margin-top: 3px; color: var(--teal); font-size: 11px; font-weight: 700; }.profile-preview small { margin-top: 5px; color: var(--muted); font-size: 12px; }
 .profile-fields { display: grid; gap: 12px; }.profile-fields label { position: relative; display: grid; gap: 6px; color: var(--ink); font-size: 11px; font-weight: 700; }.profile-fields input, .profile-fields select { width: 100%; padding: 10px 11px; border: 1px solid #cccfc8; border-radius: 4px; outline: 0; color: var(--ink); background: #fff; font-size: 12px; }.profile-fields input:focus, .profile-fields select:focus { border-color: var(--teal); box-shadow: 0 0 0 3px rgba(33,107,104,.11); }.profile-fields select { appearance: none; }.profile-fields .select-icon { bottom: 11px; }.image-upload input { padding: 8px; font-size: 11px; }.availability-note { display: flex; align-items: center; gap: 7px; margin-top: 15px; padding: 10px 11px; color: #8c5d22; border-radius: 4px; background: #fff3d0; font-size: 11px; font-weight: 700; }.availability-note.active { color: var(--teal); background: #dceee9; }.availability-note .status-dot { flex: 0 0 7px; background: currentColor; }
+.profile-update { width: 100%; padding: 10px 12px; border: 0; border-radius: 4px; color: #fff; background: var(--teal); font-size: 12px; font-weight: 700; }.profile-update:hover { background: var(--deep-teal); }
 .nav-links a:hover, .text-button:hover { color: var(--ink); }
 .text-button { padding: 0; border: 0; background: transparent; color: var(--muted); }
 .nav-cta, .primary-button { border: 0; color: #fff; background: var(--teal); display: inline-flex; align-items: center; justify-content: center; gap: 10px; font-weight: 700; transition: background .2s, transform .2s; }
@@ -77,6 +78,8 @@ footer { display: flex; justify-content: space-between; max-width: 1220px; margi
 .modal textarea { min-height: 96px; resize: vertical; }
 .modal textarea:focus { border-color: var(--teal); box-shadow: 0 0 0 3px rgba(33,107,104,.11); }
 .payment-panel { margin-top: 20px; padding: 18px 18px 14px; border: 1px solid var(--line); border-radius: 10px; background: rgba(255,255,255,.7); }
+.request-status-warning { margin: -3px 0 0; padding: 10px 11px; color: #8c5d22; border-radius: 4px; background: #fff3d0; font-size: 12px; line-height: 1.45; }
+.form-submit:disabled { cursor: not-allowed; opacity: .5; transform: none; }
 .payment-panel .eyebrow { margin-bottom: 10px; }
 .payment-button { width: 100%; margin-bottom: 8px; border: 0; background: linear-gradient(135deg, var(--teal), #2d8d87); color: #fff; }
 .payment-panel span { display: block; color: var(--muted); font-size: 12px; line-height: 1.5; }
