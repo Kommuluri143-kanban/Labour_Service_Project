@@ -31,8 +31,8 @@ const mandalVillages = {
 }
 const mandals = Object.keys(mandalVillages)
 const paymentScenarios = [
-  { id: 'customer-to-app', label: 'Customer → App → Service Provider', methods: ['QR scan'] },
-  { id: 'provider-to-app', label: 'Customer → Service Provider → App', methods: ['QR scan', 'Cash in hand'] },
+  { id: 'customer-to-app', label: 'Customer → Platform → Service Provider', methods: ['QR scan'] },
+  { id: 'provider-to-app', label: 'Customer → Service Provider → Platform', methods: ['QR scan', 'Cash in hand'] },
 ]
 
 function App() {
@@ -41,6 +41,7 @@ function App() {
   const [profileOpen, setProfileOpen] = useState(false)
   const [submitted, setSubmitted] = useState(false)
   const [signedIn, setSignedIn] = useState(false)
+  const [providerAvailability, setProviderAvailability] = useState('Available')
 
   const openForm = (form) => {
     setSubmitted(false)
@@ -75,7 +76,7 @@ function App() {
             <span className="profile-trigger-copy"><strong>{signedIn ? 'My profile' : 'Profile'}</strong><small>{signedIn ? 'Signed in' : 'View details'}</small></span>
             <ChevronDown size={16} className={profileOpen ? 'profile-chevron open' : 'profile-chevron'} />
           </button>
-          {profileOpen && <ProfilePanel onSignOut={() => { setSignedIn(false); setProfileOpen(false) }} onClose={() => setProfileOpen(false)} />}
+          {profileOpen && <ProfilePanel availability={providerAvailability} onAvailabilityChange={setProviderAvailability} onSignOut={() => { setSignedIn(false); setProfileOpen(false) }} onClose={() => setProfileOpen(false)} />}
         </div>
       </header>
 
@@ -113,8 +114,6 @@ function App() {
                 <img src="/src/Workers.png" alt="Local workers preparing tools for a repair" />
                 <div className="image-caption"><span className="status-dot" /> Profiles checked by the community <ShieldCheck size={16} /></div>
               </div>
-              <div className="floating-note note-top"><span className="note-icon yellow"><Check size={15} /></span><span><strong>Clear profiles</strong><small>Skills and area shown</small></span></div>
-              <div className="floating-note note-bottom"><span className="note-icon green"><Search size={15} /></span><span><strong>Have a small job?</strong><small>Post it in a minute</small></span></div>
             </div>
           </section>
 
@@ -122,16 +121,16 @@ function App() {
         </div>
       </div>
 
-      {activeForm && <RegistrationModal type={activeForm} submitted={submitted} setSubmitted={setSubmitted} onSignedIn={() => setSignedIn(true)} onClose={closeForm} />}
+      {activeForm && <RegistrationModal type={activeForm} submitted={submitted} setSubmitted={setSubmitted} providerAvailability={providerAvailability} onSignedIn={() => setSignedIn(true)} onClose={closeForm} />}
     </main>
   )
 }
 
-function ProfilePanel({ onSignOut, onClose }) {
+function ProfilePanel({ availability, onAvailabilityChange, onSignOut, onClose }) {
   const [role, setRole] = useState('Service Provider')
   const [name, setName] = useState('Suresh Kumar')
   const [mobile, setMobile] = useState('90000 12345')
-  const [availability, setAvailability] = useState('Available')
+  const [draftAvailability, setDraftAvailability] = useState(availability)
   const [image, setImage] = useState('/src/Service_Provider_Img.png')
   const fallbackImage = role === 'Service Provider' ? '/src/Service_Provider_Img.png' : '/src/Workers.png'
 
@@ -160,22 +159,24 @@ function ProfilePanel({ onSignOut, onClose }) {
       <label>Name<input value={name} onChange={(event) => setName(event.target.value)} placeholder="Enter your name" /></label>
       <label>Mobile number<input value={mobile} onChange={(event) => setMobile(event.target.value)} type="tel" placeholder="Enter mobile number" /></label>
       <label className="image-upload">Profile image<input type="file" accept="image/*" onChange={handleImageChange} /></label>
-      {role === 'Service Provider' && <label>Request status<select value={availability} onChange={(event) => setAvailability(event.target.value)}><option>Available</option><option>Not Available</option></select><ChevronDown className="select-icon" size={16} /></label>}
+      {role === 'Service Provider' && <><label>Request status<select value={draftAvailability} onChange={(event) => setDraftAvailability(event.target.value)}><option>Available</option><option>Not Available</option></select><ChevronDown className="select-icon" size={16} /></label><button className="profile-update" type="button" onClick={() => onAvailabilityChange(draftAvailability)}>Update</button></>}
     </div>
     <div className={role === 'Service Provider' && availability === 'Available' ? 'availability-note active' : 'availability-note'}><span className="status-dot" />{role === 'Service Provider' ? availability === 'Available' ? 'Accepting new service requests' : 'Not accepting service requests' : 'Customer profile ready'}</div>
   </section>
 }
 
-function RegistrationModal({ type, submitted, setSubmitted, onSignedIn, onClose }) {
+function RegistrationModal({ type, submitted, setSubmitted, providerAvailability, onSignedIn, onClose }) {
   const isLabour = type === 'labour'
   const isContact = type === 'contact'
   const isFeedback = type === 'feedback'
   const isAdmin = type === 'admin'
   const isPayment = type === 'payment'
+  const isCustomer = type === 'customer'
   const [selectedMandal, setSelectedMandal] = useState('')
   const [selectedService, setSelectedService] = useState('')
   const [customerName, setCustomerName] = useState('')
   const [providerName, setProviderName] = useState('')
+  const [selectedProvider, setSelectedProvider] = useState('')
   const [amount, setAmount] = useState('2500')
   const [commissionRate, setCommissionRate] = useState('10')
   const [paymentScenario, setPaymentScenario] = useState('customer-to-app')
@@ -186,11 +187,14 @@ function RegistrationModal({ type, submitted, setSubmitted, onSignedIn, onClose 
   const appCommission = numericAmount * numericRate / 100
   const providerPayout = numericAmount - appCommission
   const activeScenarioMethods = paymentScenarios.find((scenario) => scenario.id === paymentScenario)?.methods || []
+  const hasAvailableProvider = providerAvailability === 'Available'
 
   const customerPays = paymentScenario === 'customer-to-app' || paymentScenario === 'provider-to-app' ? numericAmount : 0
   const appCollects = paymentScenario === 'customer-to-app' ? appCommission : paymentScenario === 'provider-to-app' ? appCommission : 0
   const providerReceives = paymentScenario === 'customer-to-app' || paymentScenario === 'provider-to-app' ? providerPayout : 0
-  const providerPays = paymentScenario === 'provider-to-app' ? appCommission : 0
+  const customerPaysLabel = paymentScenario === 'customer-to-app' ? 'Customer pays → Platform' : 'Customer pays → Service Provider'
+  const settlementLabel = paymentScenario === 'customer-to-app' ? 'Platform pays → Service Provider' : 'Service Provider pays → Platform'
+  const settlementAmount = paymentScenario === 'customer-to-app' ? providerPayout : appCommission
 
   return <div className="modal-backdrop" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
     <section className="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
@@ -202,17 +206,17 @@ function RegistrationModal({ type, submitted, setSubmitted, onSignedIn, onClose 
         {isPayment ? <div className="payment-summary">
           <div><span>Flow</span><strong>{paymentScenarios.find((scenario) => scenario.id === paymentScenario)?.label}</strong></div>
           <div><span>Method</span><strong>{paymentMethod}</strong></div>
-          <div><span>Customer pays</span><strong>₹{customerPays.toLocaleString('en-IN')}</strong></div>
-          <div><span>App receives</span><strong>₹{appCollects.toLocaleString('en-IN')}</strong></div>
+          <div><span>{customerPaysLabel}</span><strong>₹{customerPays.toLocaleString('en-IN')}</strong></div>
           <div><span>Provider receives</span><strong>₹{providerReceives.toLocaleString('en-IN')}</strong></div>
-          <div><span>Provider pays</span><strong>₹{providerPays.toLocaleString('en-IN')}</strong></div>
+          <div><span>Platform fee</span><strong>₹{appCollects.toLocaleString('en-IN')}</strong></div>  
+          <div><span>{settlementLabel}</span><strong>₹{settlementAmount.toLocaleString('en-IN')}</strong></div>
         </div> : isAdmin ? <div className="admin-dashboard-grid">
           <div className="admin-stat"><strong>128</strong><span>Profiles</span></div>
           <div className="admin-stat"><strong>24</strong><span>New leads</span></div>
           <div className="admin-stat"><strong>9</strong><span>Pending</span></div>
         </div> : <p>{isFeedback ? 'Your thoughts help us improve the local work board.' : isContact ? 'We’ve received your message and will get back to you shortly.' : 'We’ve received your details and will be in touch shortly.'}</p>}
         <button className="primary-button" onClick={onClose}>Back to home <ArrowRight size={18} /></button>
-      </div> : <><p className="eyebrow">{isPayment ? 'Secure transfer' : isAdmin ? 'Secure access' : isFeedback ? 'Help us improve' : isContact ? 'Get in touch' : isLabour ? 'Join the network' : 'Find the right help'}</p><h2 id="modal-title">{isPayment ? 'Payment Exchange' : isAdmin ? 'Admin login' : isFeedback ? 'Tell us what you think' : isContact ? 'How can we help?' : isLabour ? 'Register as a service provider' : 'Tell us what you need'}</h2><p className="modal-intro">{isPayment ? 'Choose the payment flow, method, and commission split for a customer and service provider transaction.' : isAdmin ? 'Sign in to review registrations, service requests, and community activity.' : isFeedback ? 'Share a quick rating and note about your experience.' : isContact ? 'Send us a note and our team will respond shortly.' : isLabour ? 'Share a few details and start finding work near you.' : 'We’ll help you connect with a trusted professional nearby.'}</p><form onSubmit={(event) => { event.preventDefault(); if (!isLabour && !isContact && !isFeedback && !isAdmin && !isPayment) onSignedIn(); setSubmitted(true) }}>
+      </div> : <><p className="eyebrow">{isPayment ? 'Secure transfer' : isAdmin ? 'Secure access' : isFeedback ? 'Help us improve' : isContact ? 'Get in touch' : isLabour ? 'Join the network' : 'Find the right help'}</p><h2 id="modal-title">{isPayment ? 'Payment Exchange' : isAdmin ? 'Admin login' : isFeedback ? 'Tell us what you think' : isContact ? 'How can we help?' : isLabour ? 'Register as a service provider' : 'Tell us what you need'}</h2><p className="modal-intro">{isPayment ? 'Choose the payment flow, method, and commission split for a customer and service provider transaction.' : isAdmin ? 'Sign in to review registrations, service requests, and community activity.' : isFeedback ? 'Share a quick rating and note about your experience.' : isContact ? 'Send us a note and our team will respond shortly.' : isLabour ? 'Share a few details and start finding work near you.' : 'We’ll help you connect with a trusted professional nearby.'}</p><form onSubmit={(event) => { event.preventDefault(); if (isCustomer && (!hasAvailableProvider || !selectedProvider)) return; if (!isLabour && !isContact && !isFeedback && !isAdmin && !isPayment) onSignedIn(); setSubmitted(true) }}>
         {isPayment ? <>
           <label>Payment scenario<select required value={paymentScenario} onChange={(event) => {
             const nextScenario = event.target.value
@@ -224,12 +228,12 @@ function RegistrationModal({ type, submitted, setSubmitted, onSignedIn, onClose 
           <label>Customer name<input required type="text" value={customerName} onChange={(event) => setCustomerName(event.target.value)} placeholder="e.g. Arjun Reddy" /></label>
           <label>Service provider name<input required type="text" value={providerName} onChange={(event) => setProviderName(event.target.value)} placeholder="e.g. Suresh Kumar" /></label>
           <label>Service amount<input required type="number" min="0" step="1" value={amount} onChange={(event) => setAmount(event.target.value)} placeholder="2500" /></label>
-          {(paymentScenario === 'customer-to-app' || paymentScenario === 'provider-to-app') && <label>App commission (%)<input required type="number" min="0" max="100" step="1" value={commissionRate} onChange={(event) => setCommissionRate(event.target.value)} placeholder="10" /></label>}
+          {(paymentScenario === 'customer-to-app' || paymentScenario === 'provider-to-app') && <label>App commission (%)<input required type="number" value={commissionRate} readOnly /></label>}
           <div className="payment-breakdown">
-            <div><span>Customer pays</span><strong>₹{customerPays.toLocaleString('en-IN')}</strong></div>
-            <div><span>App receives</span><strong>₹{appCollects.toLocaleString('en-IN')}</strong></div>
-            <div><span>Provider receives</span><strong>₹{providerReceives.toLocaleString('en-IN')}</strong></div>
-            <div><span>Provider pays</span><strong>₹{providerPays.toLocaleString('en-IN')}</strong></div>
+            <div><span>{customerPaysLabel}</span><strong>₹{customerPays.toLocaleString('en-IN')}</strong></div>
+            <div><span>Service Provider receives</span><strong>₹{providerReceives.toLocaleString('en-IN')}</strong></div>
+            <div><span>Platform fee</span><strong>₹{appCollects.toLocaleString('en-IN')}</strong></div>
+            <div><span>{settlementLabel}</span><strong>₹{settlementAmount.toLocaleString('en-IN')}</strong></div>
           </div>
         </> : isAdmin ? <>
           <label>Admin email<input required type="email" placeholder="admin@worknear.in" /></label>
@@ -237,6 +241,10 @@ function RegistrationModal({ type, submitted, setSubmitted, onSignedIn, onClose 
         </> : <>
           <label>Full name<input required type="text" placeholder="e.g. chaaku John" /></label>
           <label>Phone number<input required type="tel" placeholder="e.g. 90000 12345" /></label>
+        </>}
+        {isCustomer && <>
+          <label>Available service provider<select required value={selectedProvider} onChange={(event) => setSelectedProvider(event.target.value)} disabled={!hasAvailableProvider}><option value="" disabled>{hasAvailableProvider ? 'Select a service provider' : 'No service providers available'}</option>{hasAvailableProvider && <option value="Suresh Kumar">Suresh Kumar · Available</option>}</select><ChevronDown className="select-icon" size={16} /></label>
+          {!hasAvailableProvider && <p className="request-status-warning">No available service providers can receive requests right now.</p>}
         </>}
         {isLabour ? <>
           <label>What service do you offer<select required value={selectedService} onChange={(event) => setSelectedService(event.target.value)}><option value="" disabled>Select your service</option>{labourTypes.map((item) => <option key={item} value={item}>{item}</option>)}</select><ChevronDown className="select-icon" size={16} /></label>
@@ -246,7 +254,7 @@ function RegistrationModal({ type, submitted, setSubmitted, onSignedIn, onClose 
           {selectedService === 'Construction Service Providers' && <label>Construction specialist<select required defaultValue=""><option value="" disabled>Select a specialization</option><option>Masons Specialist</option><option>Labours Specialist</option></select><ChevronDown className="select-icon" size={16} /></label>}
         </> : isContact ? <label>Your message<textarea required placeholder="Tell us how we can help" /></label> : isFeedback ? <><label>How would you rate your experience?<select required defaultValue=""><option value="" disabled>Select a rating</option><option>Excellent</option><option>Good</option><option>Needs improvement</option></select><ChevronDown className="select-icon" size={16} /></label><label>Your feedback<textarea required placeholder="Share your thoughts" /></label></> : !isAdmin && !isPayment && <label>What do you need help with?<input required type="text" placeholder="e.g. Fix a leaking tap" /></label>}
         {!isFeedback && !isAdmin && !isPayment && <><label>Mandal<select required value={selectedMandal} onChange={(event) => setSelectedMandal(event.target.value)}><option value="" disabled>Select your mandal</option>{mandals.map((mandal) => <option key={mandal}>{mandal}</option>)}</select><ChevronDown className="select-icon" size={16} /></label><label>Village<select key={selectedMandal} required defaultValue="" disabled={!selectedMandal}><option value="" disabled>Select your village</option>{(mandalVillages[selectedMandal] || []).map((village) => <option key={village}>{village}</option>)}</select><ChevronDown className="select-icon" size={16} /></label></>}
-        <button className="primary-button form-submit" type="submit">{isPayment ? 'Process payment' : isAdmin ? 'Open dashboard' : isFeedback ? 'Send feedback' : isContact ? 'Send message' : isLabour ? 'Create my profile' : 'Find a professional'} <ArrowRight size={18} /></button>
+        <button className="primary-button form-submit" type="submit" disabled={isCustomer && (!hasAvailableProvider || !selectedProvider)}>{isPayment ? 'Process payment' : isAdmin ? 'Open dashboard' : isFeedback ? 'Send feedback' : isContact ? 'Send message' : isLabour ? 'Create my profile' : 'Find a professional'} <ArrowRight size={18} /></button>
       </form></>}
     </section>
   </div>
