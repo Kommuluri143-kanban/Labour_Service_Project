@@ -1,6 +1,6 @@
-import { StrictMode, useState } from 'react'
+import { StrictMode, useEffect, useState } from 'react'
 import { createRoot } from 'react-dom/client'
-import { ArrowRight, Check, ChevronDown, Menu, Search, ShieldCheck, UserRound, X } from 'lucide-react'
+import { ArrowRight, Check, CheckCircle2, ChevronDown, LogOut, Menu, Pencil, QrCode, RefreshCw, Search, ShieldCheck, UserRound, X } from 'lucide-react'
 import './styles.css'
 
 const categories = [
@@ -41,7 +41,7 @@ function App() {
   const [profileOpen, setProfileOpen] = useState(false)
   const [submitted, setSubmitted] = useState(false)
   const [signedIn, setSignedIn] = useState(false)
-  const [providerAvailability, setProviderAvailability] = useState('Available')
+  const [providerAvailability, setProviderAvailability] = useState('Active')
 
   const openForm = (form) => {
     setSubmitted(false)
@@ -121,7 +121,7 @@ function App() {
         </div>
       </div>
 
-      {activeForm && <RegistrationModal type={activeForm} submitted={submitted} setSubmitted={setSubmitted} providerAvailability={providerAvailability} onSignedIn={() => setSignedIn(true)} onClose={closeForm} />}
+      {activeForm && <RegistrationModal type={activeForm} submitted={submitted} setSubmitted={setSubmitted} onSignedIn={() => setSignedIn(true)} onSignOut={() => { setSignedIn(false); closeForm() }} onClose={closeForm} />}
     </main>
   )
 }
@@ -159,13 +159,13 @@ function ProfilePanel({ availability, onAvailabilityChange, onSignOut, onClose }
       <label>Name<input value={name} onChange={(event) => setName(event.target.value)} placeholder="Enter your name" /></label>
       <label>Mobile number<input value={mobile} onChange={(event) => setMobile(event.target.value)} type="tel" placeholder="Enter mobile number" /></label>
       <label className="image-upload">Profile image<input type="file" accept="image/*" onChange={handleImageChange} /></label>
-      {role === 'Service Provider' && <><label>Request status<select value={draftAvailability} onChange={(event) => setDraftAvailability(event.target.value)}><option>Available</option><option>Not Available</option></select><ChevronDown className="select-icon" size={16} /></label><button className="profile-update" type="button" onClick={() => onAvailabilityChange(draftAvailability)}>Update</button></>}
+      {role === 'Service Provider' && <><label>Request status<select value={draftAvailability} onChange={(event) => setDraftAvailability(event.target.value)}><option>Active</option><option>Inactive</option></select><ChevronDown className="select-icon" size={16} /></label><button className="profile-update" type="button" onClick={() => onAvailabilityChange(draftAvailability)}>Update</button></>}
     </div>
-    <div className={role === 'Service Provider' && availability === 'Available' ? 'availability-note active' : 'availability-note'}><span className="status-dot" />{role === 'Service Provider' ? availability === 'Available' ? 'Accepting new service requests' : 'Not accepting service requests' : 'Customer profile ready'}</div>
+    <div className={role === 'Service Provider' && availability === 'Active' ? 'availability-note active' : 'availability-note'}><span className="status-dot" />{role === 'Service Provider' ? availability === 'Active' ? 'Accepting new service requests' : 'Not accepting service requests' : 'Customer profile ready'}</div>
   </section>
 }
 
-function RegistrationModal({ type, submitted, setSubmitted, providerAvailability, onSignedIn, onClose }) {
+function RegistrationModal({ type, submitted, setSubmitted, onSignedIn, onSignOut, onClose }) {
   const isLabour = type === 'labour'
   const isContact = type === 'contact'
   const isFeedback = type === 'feedback'
@@ -176,19 +176,34 @@ function RegistrationModal({ type, submitted, setSubmitted, providerAvailability
   const [selectedService, setSelectedService] = useState('')
   const [customerName, setCustomerName] = useState('')
   const [providerName, setProviderName] = useState('')
-  const [selectedProvider, setSelectedProvider] = useState('')
+  const [adminOtp, setAdminOtp] = useState('')
+  const [adminOtpStep, setAdminOtpStep] = useState(false)
+  const [captchaAnswer, setCaptchaAnswer] = useState('')
+  const [captchaCode, setCaptchaCode] = useState(() => Math.random().toString(36).slice(2, 7).toUpperCase())
+  const [captchaError, setCaptchaError] = useState('')
+  const [otpError, setOtpError] = useState('')
   const [amount, setAmount] = useState('2500')
   const [commissionRate, setCommissionRate] = useState('10')
   const [paymentScenario, setPaymentScenario] = useState('customer-to-app')
   const [paymentMethod, setPaymentMethod] = useState('QR scan')
+
+  const refreshCaptcha = () => {
+    setCaptchaCode(Math.random().toString(36).slice(2, 7).toUpperCase())
+    setCaptchaAnswer('')
+    setCaptchaError('')
+  }
+
+  useEffect(() => {
+    if (!isAdmin || adminOtpStep) return undefined
+    const refreshTimer = window.setInterval(refreshCaptcha, 60 * 1000)
+    return () => window.clearInterval(refreshTimer)
+  }, [isAdmin, adminOtpStep])
 
   const numericAmount = Number(amount || 0)
   const numericRate = Number(commissionRate || 0)
   const appCommission = numericAmount * numericRate / 100
   const providerPayout = numericAmount - appCommission
   const activeScenarioMethods = paymentScenarios.find((scenario) => scenario.id === paymentScenario)?.methods || []
-  const hasAvailableProvider = providerAvailability === 'Available'
-
   const customerPays = paymentScenario === 'customer-to-app' || paymentScenario === 'provider-to-app' ? numericAmount : 0
   const appCollects = paymentScenario === 'customer-to-app' ? appCommission : paymentScenario === 'provider-to-app' ? appCommission : 0
   const providerReceives = paymentScenario === 'customer-to-app' || paymentScenario === 'provider-to-app' ? providerPayout : 0
@@ -197,12 +212,12 @@ function RegistrationModal({ type, submitted, setSubmitted, providerAvailability
   const settlementAmount = paymentScenario === 'customer-to-app' ? providerPayout : appCommission
 
   return <div className="modal-backdrop" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
-    <section className="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+    <section className={isAdmin ? 'modal admin-modal' : 'modal'} role="dialog" aria-modal="true" aria-labelledby="modal-title">
       <button className="close-button" onClick={onClose} aria-label="Close registration form"><X size={20} /></button>
       {submitted ? <div className="success-state admin-dashboard">
         <span className="success-icon"><Check size={26} /></span>
         <p className="eyebrow">{isPayment ? 'Payment complete' : isAdmin ? 'Admin dashboard' : isFeedback ? 'Feedback received' : isContact ? 'Message received' : 'You’re on the list'}</p>
-        <h2>{isPayment ? 'Payment exchange success' : isAdmin ? 'Welcome back, Admin.' : isFeedback ? 'Thanks for your feedback.' : isContact ? 'Thanks for contacting us.' : 'Thanks for reaching out.'}</h2>
+        <h2>{isPayment ? 'Payment exchange success' : isAdmin ? 'Hello, Admin.' : isFeedback ? 'Thanks for your feedback.' : isContact ? 'Thanks for contacting us.' : 'Thanks for reaching out.'}</h2>
         {isPayment ? <div className="payment-summary">
           <div><span>Flow</span><strong>{paymentScenarios.find((scenario) => scenario.id === paymentScenario)?.label}</strong></div>
           <div><span>Method</span><strong>{paymentMethod}</strong></div>
@@ -210,13 +225,9 @@ function RegistrationModal({ type, submitted, setSubmitted, providerAvailability
           <div><span>Provider receives</span><strong>₹{providerReceives.toLocaleString('en-IN')}</strong></div>
           <div><span>Platform fee</span><strong>₹{appCollects.toLocaleString('en-IN')}</strong></div>  
           <div><span>{settlementLabel}</span><strong>₹{settlementAmount.toLocaleString('en-IN')}</strong></div>
-        </div> : isAdmin ? <div className="admin-dashboard-grid">
-          <div className="admin-stat"><strong>128</strong><span>Profiles</span></div>
-          <div className="admin-stat"><strong>24</strong><span>New leads</span></div>
-          <div className="admin-stat"><strong>9</strong><span>Pending</span></div>
-        </div> : <p>{isFeedback ? 'Your thoughts help us improve the local work board.' : isContact ? 'We’ve received your message and will get back to you shortly.' : 'We’ve received your details and will be in touch shortly.'}</p>}
+        </div> : isAdmin ? <AdminDashboard onSignOut={onSignOut} /> : <p>{isFeedback ? 'Your thoughts help us improve the local work board.' : isContact ? 'We’ve received your message and will get back to you shortly.' : 'We’ve received your details and will be in touch shortly.'}</p>}
         <button className="primary-button" onClick={onClose}>Back to home <ArrowRight size={18} /></button>
-      </div> : <><p className="eyebrow">{isPayment ? 'Secure transfer' : isAdmin ? 'Secure access' : isFeedback ? 'Help us improve' : isContact ? 'Get in touch' : isLabour ? 'Join the network' : 'Find the right help'}</p><h2 id="modal-title">{isPayment ? 'Payment Exchange' : isAdmin ? 'Admin login' : isFeedback ? 'Tell us what you think' : isContact ? 'How can we help?' : isLabour ? 'Register as a service provider' : 'Tell us what you need'}</h2><p className="modal-intro">{isPayment ? 'Choose the payment flow, method, and commission split for a customer and service provider transaction.' : isAdmin ? 'Sign in to review registrations, service requests, and community activity.' : isFeedback ? 'Share a quick rating and note about your experience.' : isContact ? 'Send us a note and our team will respond shortly.' : isLabour ? 'Share a few details and start finding work near you.' : 'We’ll help you connect with a trusted professional nearby.'}</p><form onSubmit={(event) => { event.preventDefault(); if (isCustomer && (!hasAvailableProvider || !selectedProvider)) return; if (!isLabour && !isContact && !isFeedback && !isAdmin && !isPayment) onSignedIn(); setSubmitted(true) }}>
+      </div> : <><p className="eyebrow">{isPayment ? 'Secure transfer' : isAdmin ? adminOtpStep ? 'Mobile verification' : 'Secure access' : isFeedback ? 'Help us improve' : isContact ? 'Get in touch' : isLabour ? 'Join the network' : 'Find the right help'}</p><h2 id="modal-title">{isPayment ? 'Payment Exchange' : isAdmin ? adminOtpStep ? 'Enter your OTP' : 'Admin login' : isFeedback ? 'Tell us what you think' : isContact ? 'How can we help?' : isLabour ? 'Register as a service provider' : 'Tell us what you need'}</h2><p className="modal-intro">{isPayment ? 'Choose the payment flow, method, and commission split for a customer and service provider transaction.' : isAdmin ? adminOtpStep ? 'Enter the one-time password sent to your registered mobile number.' : 'Sign in with your email, password, and CAPTCHA to continue.' : isFeedback ? 'Share a quick rating and note about your experience.' : isContact ? 'Send us a note and our team will respond shortly.' : isLabour ? 'Share a few details and start finding work near you.' : 'We’ll help you connect with a trusted professional nearby.'}</p><form onSubmit={(event) => { event.preventDefault(); if (isAdmin && !adminOtpStep) { if (captchaAnswer.trim().toUpperCase() !== captchaCode) { setCaptchaError('CAPTCHA does not match.'); return } setAdminOtpStep(true); return } if (isAdmin && !/^\d{6}$/.test(adminOtp)) { setOtpError('Enter the 6-digit OTP sent to your mobile.'); return } if (!isLabour && !isContact && !isFeedback && !isPayment) onSignedIn(); setSubmitted(true) }}>
         {isPayment ? <>
           <label>Payment scenario<select required value={paymentScenario} onChange={(event) => {
             const nextScenario = event.target.value
@@ -235,16 +246,16 @@ function RegistrationModal({ type, submitted, setSubmitted, providerAvailability
             <div><span>Platform fee</span><strong>₹{appCollects.toLocaleString('en-IN')}</strong></div>
             <div><span>{settlementLabel}</span><strong>₹{settlementAmount.toLocaleString('en-IN')}</strong></div>
           </div>
-        </> : isAdmin ? <>
+        </> : isAdmin && !adminOtpStep ? <>
           <label>Admin email<input required type="email" placeholder="admin@worknear.in" /></label>
           <label>Password<input required type="password" placeholder="Enter password" /></label>
+          <div className="captcha-field"><span>CAPTCHA</span><div className="captcha-code-row"><strong>{captchaCode}</strong><button className="captcha-refresh" type="button" onClick={refreshCaptcha} aria-label="Refresh CAPTCHA" title="Refresh CAPTCHA"><RefreshCw size={15} /></button></div><input required type="text" value={captchaAnswer} onChange={(event) => { setCaptchaAnswer(event.target.value); setCaptchaError('') }} placeholder="Enter CAPTCHA" aria-label="Enter CAPTCHA" />{captchaError && <small>{captchaError}</small>}</div>
+        </> : isAdmin ? <>
+          <div className="otp-notice">OTP sent to your registered mobile number.</div>
+          <label>One-time password<input required type="text" inputMode="numeric" pattern="[0-9]{6}" maxLength="6" value={adminOtp} onChange={(event) => { setAdminOtp(event.target.value.replace(/\D/g, '')); setOtpError('') }} placeholder="Enter 6-digit OTP" />{otpError && <small className="otp-error">{otpError}</small>}</label>
         </> : <>
           <label>Full name<input required type="text" placeholder="e.g. chaaku John" /></label>
           <label>Phone number<input required type="tel" placeholder="e.g. 90000 12345" /></label>
-        </>}
-        {isCustomer && <>
-          <label>Available service provider<select required value={selectedProvider} onChange={(event) => setSelectedProvider(event.target.value)} disabled={!hasAvailableProvider}><option value="" disabled>{hasAvailableProvider ? 'Select a service provider' : 'No service providers available'}</option>{hasAvailableProvider && <option value="Suresh Kumar">Suresh Kumar · Available</option>}</select><ChevronDown className="select-icon" size={16} /></label>
-          {!hasAvailableProvider && <p className="request-status-warning">No available service providers can receive requests right now.</p>}
         </>}
         {isLabour ? <>
           <label>What service do you offer<select required value={selectedService} onChange={(event) => setSelectedService(event.target.value)}><option value="" disabled>Select your service</option>{labourTypes.map((item) => <option key={item} value={item}>{item}</option>)}</select><ChevronDown className="select-icon" size={16} /></label>
@@ -254,10 +265,93 @@ function RegistrationModal({ type, submitted, setSubmitted, providerAvailability
           {selectedService === 'Construction Service Providers' && <label>Construction specialist<select required defaultValue=""><option value="" disabled>Select a specialization</option><option>Masons Specialist</option><option>Labours Specialist</option></select><ChevronDown className="select-icon" size={16} /></label>}
         </> : isContact ? <label>Your message<textarea required placeholder="Tell us how we can help" /></label> : isFeedback ? <><label>How would you rate your experience?<select required defaultValue=""><option value="" disabled>Select a rating</option><option>Excellent</option><option>Good</option><option>Needs improvement</option></select><ChevronDown className="select-icon" size={16} /></label><label>Your feedback<textarea required placeholder="Share your thoughts" /></label></> : !isAdmin && !isPayment && <label>What do you need help with?<input required type="text" placeholder="e.g. Fix a leaking tap" /></label>}
         {!isFeedback && !isAdmin && !isPayment && <><label>Mandal<select required value={selectedMandal} onChange={(event) => setSelectedMandal(event.target.value)}><option value="" disabled>Select your mandal</option>{mandals.map((mandal) => <option key={mandal}>{mandal}</option>)}</select><ChevronDown className="select-icon" size={16} /></label><label>Village<select key={selectedMandal} required defaultValue="" disabled={!selectedMandal}><option value="" disabled>Select your village</option>{(mandalVillages[selectedMandal] || []).map((village) => <option key={village}>{village}</option>)}</select><ChevronDown className="select-icon" size={16} /></label></>}
-        <button className="primary-button form-submit" type="submit" disabled={isCustomer && (!hasAvailableProvider || !selectedProvider)}>{isPayment ? 'Process payment' : isAdmin ? 'Open dashboard' : isFeedback ? 'Send feedback' : isContact ? 'Send message' : isLabour ? 'Create my profile' : 'Find a professional'} <ArrowRight size={18} /></button>
+        <button className="primary-button form-submit" type="submit">{isPayment ? 'Process payment' : isAdmin ? adminOtpStep ? 'Verify OTP' : 'Continue to OTP' : isFeedback ? 'Send feedback' : isContact ? 'Send message' : isLabour ? 'Create my profile' : 'Find a professional'} <ArrowRight size={18} /></button>
       </form></>}
     </section>
   </div>
 }
 
+
+function AdminDashboard({ onSignOut }) {
+  const [adminView, setAdminView] = useState('providers')
+  const [providers, setProviders] = useState([
+    { id: 1, name: 'Suresh Kumar', mobile: '90000 12345', address: 'Atmakur, Nellore', service: 'Electricians', customer: 'Lakshmi Reddy', customerMobile: '91234 56789', customerAddress: 'Atmakur, Nellore', serviceStatus: 'In-Progress', paymentStatus: 'Resolved - Payment pending with customer', amount: 2500, status: 'Active', blocked: false, comment: 'Active for new electrical work.', accessAdmin: null },
+    { id: 2, name: 'Ravi Naidu', mobile: '90000 67890', address: 'Marripadu, Nellore', service: 'Plumbers', customer: 'Arjun Reddy', customerMobile: '92345 67890', customerAddress: 'Marripadu, Nellore', serviceStatus: 'Completed', paymentStatus: 'Resolved - Payment done by customer', amount: 1800, status: 'Active', blocked: false, comment: 'Verified provider.', accessAdmin: null },
+    { id: 5, name: 'Kiran Babu', mobile: '90555 11223', address: 'Vinjamur, Nellore', service: 'Construction Service Providers', customer: 'Meena Devi', customerMobile: '93456 78901', customerAddress: 'Vinjamur, Nellore', serviceStatus: 'Completed', paymentStatus: 'Resolved - Payment done by customer', amount: 2250, status: 'Active', blocked: true, comment: 'Temporarily unActive.', accessAdmin: { name: 'WorkNear Admin', mobile: '98765 43210' } },
+  ])
+  const [pendingProviders, setPendingProviders] = useState([
+    { id: 3, name: 'Mohan Rao', mobile: '90123 45678', address: 'Vinjamur, Nellore', service: 'Electricians', workPhoto: '/src/Workers.png', status: 'Inactive', approved: false, approval: null },
+    { id: 4, name: 'Anitha Devi', mobile: '90876 54321', address: 'Atmakur, Nellore', service: 'Painters', workPhoto: '/src/Service_Provider_Img.png', status: 'Inactive', approved: false, approval: null },
+  ])
+  const [editingId, setEditingId] = useState(null)
+  const [editingAccessId, setEditingAccessId] = useState(null)
+  const [confirmation, setConfirmation] = useState(null)
+  const [adminDetails] = useState({ name: 'WorkNear Admin', mobile: '98765 43210', email: 'admin@worknear.in' })
+
+  const updateProvider = (id, field, value) => {
+    setPendingProviders((current) => current.map((provider) => provider.id === id ? { ...provider, [field]: value } : provider))
+  }
+
+  const approveProvider = (provider) => {
+    const approval = { admin: adminDetails.name, mobile: adminDetails.mobile, email: adminDetails.email, date: new Date().toLocaleString('en-IN') }
+    setPendingProviders((current) => current.filter((item) => item.id !== provider.id))
+    setProviders((current) => [...current, { ...provider, status: 'Active', approved: true, approval, customer: 'Pending', customerMobile: 'Pending', customerAddress: 'Pending', serviceStatus: 'Not Started', paymentStatus: 'Resolved - Payment pending with customer', amount: 0, blocked: false, comment: 'Approved provider.', accessAdmin: null }])
+  }
+
+  const updateAccessProvider = (id, field, value) => {
+    setProviders((current) => current.map((provider) => provider.id === id ? { ...provider, [field]: value } : provider))
+  }
+
+  const toggleProviderAccess = (provider) => {
+    updateAccessProvider(provider.id, 'blocked', !provider.blocked)
+    updateAccessProvider(provider.id, 'accessAdmin', { name: adminDetails.name, mobile: adminDetails.mobile })
+  }
+
+  const requestConfirmation = (action, provider, onConfirm) => setConfirmation({ action, provider, onConfirm })
+
+  return <div className="admin-dashboard-content">
+    <div className="admin-dashboard-header"><div><p className="eyebrow">Admin workspace</p><h3>{adminView === 'payments' ? 'Payment Status' : adminView === 'service-providers' ? 'Service Providers' : 'Provider management'}</h3></div><div className="admin-dashboard-actions"><button className="admin-dashboard-link" type="button" onClick={() => setAdminView('payments')}>Payment Status</button><button className="admin-dashboard-link" type="button" onClick={() => setAdminView('service-providers')}>Service Providers</button><button className="admin-signout" onClick={onSignOut}><LogOut size={15} /> Sign out</button></div></div>
+    {adminView === 'payments' ? <AdminPaymentStatus providers={providers} /> : adminView === 'service-providers' ? <AdminServiceProviders providers={providers} /> : <>
+    <div className="admin-dashboard-grid">
+      <div className="admin-stat"><strong>{providers.length}</strong><span>Active providers</span></div>
+      <div className="admin-stat"><strong>{providers.filter((provider) => provider.serviceStatus === 'In-Progress').length}</strong><span>In progress</span></div>
+      <div className="admin-stat"><strong>{pendingProviders.filter((provider) => !provider.approved).length}</strong><span>Awaiting approval</span></div>
+    </div>
+    <AdminTableSection title="Active Service Providers" description="Monitor approved provider profiles.">
+      <div className="admin-table-wrap"><table className="admin-table" id="service-providers"><thead><tr><th>Service Provider Name</th><th>Mobile Number</th><th>Address</th><th>Services Knows</th><th>Profile Status</th><th>Approved Admin Name</th><th>Admin Mobile Number</th></tr></thead><tbody>{providers.map((provider) => <tr key={provider.id}><td><strong>{provider.name}</strong></td><td>{provider.mobile}</td><td>{provider.address}</td><td>{provider.service || 'Service Provider'}</td><td><span className="table-status complete">{provider.status}</span></td><td>{provider.approval?.admin || provider.accessAdmin?.name || 'WorkNear Admin'}</td><td>{provider.approval?.mobile || provider.accessAdmin?.mobile || '98765 43210'}</td></tr>)}</tbody></table></div>
+    </AdminTableSection>
+    <AdminTableSection title="Service Provider Access" description="Block or unblock providers and record Admin comments.">
+      <div className="admin-table-wrap"><table className="admin-table access-table"><thead><tr><th>Service Provider Name</th><th>Mobile Number</th><th>Address</th><th>Services Knows</th><th>Profile Status</th><th>Block / Unblock</th><th>Comment</th><th>Edit</th><th>Admin Name</th><th>Admin Mobile Number</th></tr></thead><tbody>{providers.map((provider) => <tr key={provider.id}><td><strong>{provider.name}</strong></td><td>{provider.mobile}</td><td>{provider.address}</td><td>{provider.service || 'Service Provider'}</td><td><span className={provider.blocked ? 'table-status blocked' : 'table-status complete'}>{provider.blocked ? 'Blocked' : provider.status}</span></td><td><button className={provider.blocked ? 'table-action approve' : 'table-action block'} onClick={() => requestConfirmation(provider.blocked ? 'Unblock' : 'Block', provider, () => toggleProviderAccess(provider))}>{provider.blocked ? 'Unblock' : 'Block'}</button></td><td>{editingAccessId === provider.id ? <input value={provider.comment} onChange={(event) => updateAccessProvider(provider.id, 'comment', event.target.value)} aria-label={`Comment for ${provider.name}`} /> : provider.comment}</td><td>{editingAccessId === provider.id ? <button className="table-action" onClick={() => setEditingAccessId(null)}>Save</button> : <button className="table-icon-action" onClick={() => setEditingAccessId(provider.id)} title="Edit provider comment" aria-label={`Edit ${provider.name}`}><Pencil size={14} /></button>}</td><td>{provider.accessAdmin?.name || 'Pending'}</td><td>{provider.accessAdmin?.mobile || 'Pending'}</td></tr>)}</tbody></table></div>
+    </AdminTableSection>
+    <AdminTableSection title="Newly Registered Service Providers" description="Review provider details and approve new profiles.">
+      <div className="admin-table-wrap"><table className="admin-table approval-table"><thead><tr><th>Service Provider Name</th><th>Mobile Number</th><th>Address</th><th>Services Knows</th><th>Work Images</th><th>Profile Status</th><th>Admin Action</th><th>Admin Name</th><th>Admin Mobile Number</th></tr></thead><tbody>{pendingProviders.map((provider) => <tr key={provider.id}><td>{editingId === provider.id ? <input value={provider.name} onChange={(event) => updateProvider(provider.id, 'name', event.target.value)} /> : <strong>{provider.name}</strong>}</td><td>{editingId === provider.id ? <input value={provider.mobile} onChange={(event) => updateProvider(provider.id, 'mobile', event.target.value)} /> : provider.mobile}</td><td>{editingId === provider.id ? <input value={provider.address} onChange={(event) => updateProvider(provider.id, 'address', event.target.value)} /> : provider.address}</td><td>{editingId === provider.id ? <select value={provider.service} onChange={(event) => updateProvider(provider.id, 'service', event.target.value)}>{labourTypes.map((service) => <option key={service}>{service}</option>)}</select> : provider.service}</td><td><img className="work-photo" src={provider.workPhoto} alt={`${provider.name} completed work`} /></td><td><span className="table-status progress">{provider.status}</span></td><td><div className="approval-actions">{editingId === provider.id ? <button className="table-action" onClick={() => setEditingId(null)}>Save</button> : <button className="table-icon-action" onClick={() => setEditingId(provider.id)} title="Edit provider" aria-label={`Edit ${provider.name}`}><Pencil size={14} /></button>}<button className="table-action approve" onClick={() => requestConfirmation('Approve', provider, () => approveProvider(provider))}>Approve</button></div></td><td>{provider.approval?.admin || 'Pending'}</td><td>{provider.approval?.mobile || 'Pending'}</td></tr>)}</tbody></table></div>
+    </AdminTableSection>
+    </>}
+    {confirmation && <div className="admin-confirm-backdrop" role="presentation"><section className="admin-confirm-dialog" role="alertdialog" aria-modal="true" aria-labelledby="confirm-title"><p className="eyebrow">Confirm action</p><h3 id="confirm-title">{confirmation.action} provider?</h3><p>{confirmation.action} {confirmation.provider.name} will update their provider access status.</p><div className="admin-confirm-actions"><button className="table-action" onClick={() => setConfirmation(null)}>Cancel</button><button className="table-action approve" onClick={() => { confirmation.onConfirm(); setConfirmation(null) }}>Confirm</button></div></section></div>}
+  </div>
+}
+
+function AdminServiceProviders({ providers }) {
+  return <section className="admin-service-providers-page" aria-label="Service providers">
+    <p className="admin-page-intro">Review uploaded scan codes for service providers and the WorkNear platform.</p>
+    <AdminTableSection title="Service Providers" description="Service provider profiles and their uploaded scan codes.">
+      <div className="admin-table-wrap"><table className="admin-table service-provider-list-table"><thead><tr><th>Service Provider Name</th><th>Mobile Number</th><th>Address</th><th>Service Provider Uploaded (Scan Code)</th></tr></thead><tbody>{providers.map((provider) => <tr key={provider.id}><td><strong>{provider.name}</strong></td><td>{provider.mobile}</td><td>{provider.address}</td><td><ScanCodeStatus uploaded={provider.scanCodeUploaded !== false} /></td></tr>)}</tbody></table></div>
+    </AdminTableSection>
+    <AdminTableSection title="Platform" description="Platform account and uploaded scan code.">
+      <div className="admin-table-wrap"><table className="admin-table platform-list-table"><thead><tr><th>Platform Name</th><th>Platform Uploaded (Scan Code)</th></tr></thead><tbody><tr><td><strong>WorkNear</strong></td><td><ScanCodeStatus uploaded /></td></tr></tbody></table></div>
+    </AdminTableSection>
+  </section>
+}
+
+function ScanCodeStatus({ uploaded }) {
+  return <span className={uploaded ? 'scan-code-status uploaded' : 'scan-code-status'}><QrCode size={17} />{uploaded ? 'Uploaded' : 'Not uploaded'}</span>
+}
+
+function AdminPaymentStatus({ providers }) {
+  return <section className="admin-payment-page" aria-label="Payment status"><p className="eyebrow">Admin workspace</p><h3>Payment Status</h3><p className="admin-payment-intro">Track resolved customer payments and pending customer payments.</p><div className="admin-table-wrap"><table className="admin-table payment-status-table"><thead><tr><th>Service Provider Name</th><th>Mobile Number</th><th>Service Address</th><th>Customer Name</th><th>Customer Mobile Number</th><th>Customer Address</th><th>Payment Status</th><th>Customer Pays</th><th>Service Provider Receives</th><th>Platform Fee</th></tr></thead><tbody>{providers.map((provider) => { const platformFee = provider.amount * 0.1; return <tr key={provider.id}><td><strong>{provider.name}</strong></td><td>{provider.mobile}</td><td>{provider.address}</td><td>{provider.customer}</td><td>{provider.customerMobile}</td><td>{provider.customerAddress}</td><td><span className={provider.paymentStatus.includes('done') ? 'table-status complete' : 'table-status progress'}>{provider.paymentStatus}</span></td><td>₹{provider.amount.toLocaleString('en-IN')}</td><td>₹{(provider.amount - platformFee).toLocaleString('en-IN')}</td><td>₹{platformFee.toLocaleString('en-IN')}</td></tr> })}</tbody></table></div></section>
+}
+
+function AdminTableSection({ title, description, children }) {
+  return <section className="admin-table-section"><div className="admin-section-heading"><div><p className="eyebrow">Admin review</p><h3>{title}</h3><p>{description}</p></div></div>{children}</section>
+}
 createRoot(document.getElementById('root')).render(<StrictMode><App /></StrictMode>)
