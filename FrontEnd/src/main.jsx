@@ -1,6 +1,6 @@
-import { StrictMode, useEffect, useState } from 'react'
+import { StrictMode, useEffect, useRef, useState } from 'react'
 import { createRoot } from 'react-dom/client'
-import { ArrowRight, Check, CheckCircle2, ChevronDown, LogOut, Menu, Pencil, QrCode, RefreshCw, Search, ShieldCheck, UserRound, X } from 'lucide-react'
+import { ArrowRight, Check, CheckCircle2, ChevronDown, LogOut, Menu, Mic, MicOff, Pencil, QrCode, RefreshCw, Search, ShieldCheck, UserRound, X } from 'lucide-react'
 import './styles.css'
 
 const categories = [
@@ -36,6 +36,7 @@ const paymentScenarios = [
 ]
 
 function App() {
+  const [entryScreen, setEntryScreen] = useState('landing')
   const [activeForm, setActiveForm] = useState(null)
   const [menuOpen, setMenuOpen] = useState(false)
   const [profileOpen, setProfileOpen] = useState(false)
@@ -52,6 +53,9 @@ function App() {
 
   const closeForm = () => setActiveForm(null)
 
+  if (entryScreen === 'landing') return <WelcomeScreen onSignIn={() => setEntryScreen('signin')} onSignUp={() => setEntryScreen('signup')} />
+  if (entryScreen === 'signin' || entryScreen === 'signup') return <SignInFlow mode={entryScreen} onBack={() => setEntryScreen('landing')} onSuccess={() => { setSignedIn(true); setEntryScreen('app') }} />
+
   return (
     <main className="app-shell">
       <header className="topbar">
@@ -64,7 +68,6 @@ function App() {
         </button>
         <nav className={menuOpen ? 'nav-links open' : 'nav-links'}>
           <a href="#categories" onClick={() => setMenuOpen(false)}>Find a service</a>
-          <button className="text-button" onClick={() => openForm('customer')}>Sign in</button>
           <button className="nav-cta" onClick={() => openForm('labour')}>Join as a service provider</button>
           <button className="nav-cta contact-cta" onClick={() => openForm('contact')}>Contact Us</button>
           <button className="nav-cta feedback-cta" onClick={() => openForm('feedback')}>Feedback</button>
@@ -76,6 +79,7 @@ function App() {
             <span className="profile-trigger-copy"><strong>{signedIn ? 'My profile' : 'Profile'}</strong><small>{signedIn ? 'Signed in' : 'View details'}</small></span>
             <ChevronDown size={16} className={profileOpen ? 'profile-chevron open' : 'profile-chevron'} />
           </button>
+          <button className="profile-signout" onClick={() => { setSignedIn(false); setProfileOpen(false); setEntryScreen('landing') }}>Sign out</button>
           {profileOpen && <ProfilePanel availability={providerAvailability} onAvailabilityChange={setProviderAvailability} onSignOut={() => { setSignedIn(false); setProfileOpen(false) }} onClose={() => setProfileOpen(false)} />}
         </div>
       </header>
@@ -126,6 +130,73 @@ function App() {
   )
 }
 
+function WelcomeScreen({ onSignIn, onSignUp }) {
+  return <main className="welcome-screen">
+    <div className="welcome-content">
+      <h1><span>WN</span><b>|</b><span>Work<br />Near</span></h1>
+      <p className="welcome-links">Already existing user <a href="#sign-in" onClick={(event) => { event.preventDefault(); onSignIn() }}>Sign in</a></p>
+      <p className="welcome-links">New user <a href="#sign-up" onClick={(event) => { event.preventDefault(); onSignUp() }}>Sign up</a></p>
+    </div>
+  </main>
+}
+
+function SignInFlow({ mode, onBack, onSuccess }) {
+  const [selectedService, setSelectedService] = useState('')
+  const [selectedMandal, setSelectedMandal] = useState('')
+  const [mobile, setMobile] = useState('')
+  const [captchaAnswer, setCaptchaAnswer] = useState('')
+  const [captchaCode, setCaptchaCode] = useState(() => Math.random().toString(36).slice(2, 7).toUpperCase())
+  const [captchaError, setCaptchaError] = useState('')
+  const [otp, setOtp] = useState('')
+  const [generatedOtp, setGeneratedOtp] = useState('')
+  const [otpError, setOtpError] = useState('')
+
+  const refreshCaptcha = () => {
+    setCaptchaCode(Math.random().toString(36).slice(2, 7).toUpperCase())
+    setCaptchaAnswer('')
+    setCaptchaError('')
+  }
+
+  const handleSubmit = (event) => {
+    event.preventDefault()
+    if (!generatedOtp) {
+      if (captchaAnswer.trim().toUpperCase() !== captchaCode) {
+        setCaptchaError('CAPTCHA does not match.')
+        return
+      }
+      const nextOtp = String(Math.floor(100000 + Math.random() * 900000))
+      setGeneratedOtp(nextOtp)
+      setOtp('')
+      return
+    }
+    if (!/^\d{6}$/.test(otp)) {
+      setOtpError('Enter the correct 6-digit OTP.')
+      return
+    }
+    onSuccess()
+  }
+
+  return <main className="signin-screen">
+    <section className="signin-panel">
+      <p className="eyebrow">WorkNear access</p>
+      <h1>{generatedOtp ? 'Verify OTP' : mode === 'signup' ? 'Sign up' : 'Sign in'}</h1>
+      <p className="signin-intro">{generatedOtp ? `Enter the six-digit OTP sent to ${mobile}.` : 'Choose a service to continue to the local work board.'}</p>
+      <form onSubmit={handleSubmit}>
+        {!generatedOtp && <>
+          {mode === 'signup' && <>
+            <label>User Full Name<input required type="text" value={selectedService} onChange={(event) => setSelectedService(event.target.value)} placeholder="Enter your full name" /></label>
+          </>}
+          <label>Mobile Number<input required type="tel" value={mobile} onChange={(event) => setMobile(event.target.value)} placeholder="Enter mobile number" /></label>
+          <div className="captcha-field"><span>CAPTCHA</span><div className="captcha-code-row"><strong>{captchaCode}</strong><button className="captcha-refresh" type="button" onClick={refreshCaptcha} aria-label="Refresh CAPTCHA" title="Refresh CAPTCHA"><RefreshCw size={15} /></button></div><input required type="text" value={captchaAnswer} onChange={(event) => { setCaptchaAnswer(event.target.value); setCaptchaError('') }} placeholder="Enter CAPTCHA" aria-label="Enter CAPTCHA" />{captchaError && <small>{captchaError}</small>}</div>
+        </>}
+        {generatedOtp && <label>One-time password<input required autoFocus type="text" inputMode="numeric" pattern="[0-9]{6}" maxLength="6" value={otp} onChange={(event) => { setOtp(event.target.value.replace(/\D/g, '')); setOtpError('') }} placeholder="Enter 6-digit OTP" />{otpError && <small className="otp-error">{otpError}</small>}</label>}
+        <button className="primary-button form-submit" type="submit">{generatedOtp ? 'Verify OTP' : 'Continue to OTP'} <ArrowRight size={18} /></button>
+        <button className="signin-back" type="button" onClick={onBack}>&lt;- Back</button>
+      </form>
+    </section>
+  </main>
+}
+
 function ProfilePanel({ availability, onAvailabilityChange, onSignOut, onClose }) {
   const [role, setRole] = useState('Service Provider')
   const [name, setName] = useState('Suresh Kumar')
@@ -152,7 +223,7 @@ function ProfilePanel({ availability, onAvailabilityChange, onSignOut, onClose }
     <div className="profile-panel-heading"><div><p className="eyebrow">Your account</p><h2>Profile details</h2></div><div className="profile-panel-actions"><button className="profile-signout-heading" onClick={onSignOut}>Sign out</button><button className="profile-close" onClick={onClose} aria-label="Close profile"><X size={17} /></button></div></div>
     <div className="profile-preview">
       <img src={image || fallbackImage} alt={`${role} profile`} />
-      <div><strong>{name || 'Your name'}</strong><span>{role}</span><small>{mobile || 'Mobile number'}</small></div>
+      <div><strong>{name || 'Your name'}</strong><span>{role}</span><small>{mobile || 'Mobile Number'}</small></div>
     </div>
     <div className="profile-fields">
       <label>Profile type<select value={role} onChange={handleRoleChange}><option>Customer</option><option>Service Provider</option></select><ChevronDown className="select-icon" size={16} /></label>
@@ -176,6 +247,10 @@ function RegistrationModal({ type, submitted, setSubmitted, onSignedIn, onSignOu
   const [selectedService, setSelectedService] = useState('')
   const [customerName, setCustomerName] = useState('')
   const [providerName, setProviderName] = useState('')
+  const [customerNeed, setCustomerNeed] = useState('')
+  const [isListening, setIsListening] = useState(false)
+  const [voiceError, setVoiceError] = useState('')
+  const recognitionRef = useRef(null)
   const [adminOtp, setAdminOtp] = useState('')
   const [adminOtpStep, setAdminOtpStep] = useState(false)
   const [captchaAnswer, setCaptchaAnswer] = useState('')
@@ -198,6 +273,50 @@ function RegistrationModal({ type, submitted, setSubmitted, onSignedIn, onSignOu
     const refreshTimer = window.setInterval(refreshCaptcha, 60 * 1000)
     return () => window.clearInterval(refreshTimer)
   }, [isAdmin, adminOtpStep])
+
+  useEffect(() => {
+    return () => recognitionRef.current?.stop()
+  }, [])
+
+  const startVoiceInput = () => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
+    if (!SpeechRecognition) {
+      setVoiceError('Voice input is not supported in this browser.')
+      return
+    }
+
+    if (recognitionRef.current) {
+      recognitionRef.current.stop()
+    }
+
+    const recognition = new SpeechRecognition()
+    recognition.lang = 'en-US'
+    recognition.interimResults = true
+    recognition.continuous = false
+
+    recognition.onresult = (event) => {
+      const transcript = Array.from(event.results)
+        .map((result) => result[0].transcript)
+        .join(' ')
+        .trim()
+
+      if (transcript) {
+        setCustomerNeed(transcript)
+        setVoiceError('')
+      }
+    }
+
+    recognition.onend = () => setIsListening(false)
+    recognition.onerror = () => {
+      setVoiceError('Voice input is unavailable right now.')
+      setIsListening(false)
+    }
+
+    recognitionRef.current = recognition
+    setIsListening(true)
+    setVoiceError('')
+    recognition.start()
+  }
 
   const numericAmount = Number(amount || 0)
   const numericRate = Number(commissionRate || 0)
@@ -253,18 +372,15 @@ function RegistrationModal({ type, submitted, setSubmitted, onSignedIn, onSignOu
         </> : isAdmin ? <>
           <div className="otp-notice">OTP sent to your registered mobile number.</div>
           <label>One-time password<input required type="text" inputMode="numeric" pattern="[0-9]{6}" maxLength="6" value={adminOtp} onChange={(event) => { setAdminOtp(event.target.value.replace(/\D/g, '')); setOtpError('') }} placeholder="Enter 6-digit OTP" />{otpError && <small className="otp-error">{otpError}</small>}</label>
-        </> : <>
-          <label>Full name<input required type="text" placeholder="e.g. chaaku John" /></label>
-          <label>Phone number<input required type="tel" placeholder="e.g. 90000 12345" /></label>
-        </>}
+        </> : null}
         {isLabour ? <>
           <label>What service do you offer<select required value={selectedService} onChange={(event) => setSelectedService(event.target.value)}><option value="" disabled>Select your service</option>{labourTypes.map((item) => <option key={item} value={item}>{item}</option>)}</select><ChevronDown className="select-icon" size={16} /></label>
           {selectedService === 'Electricians' && <label>Electrician specialist<select required defaultValue=""><option value="" disabled>Select a specialization</option><option>Home Specialist</option><option>Farming Motors Specialist</option><option>Both Specialist</option></select><ChevronDown className="select-icon" size={16} /></label>}
           {selectedService === 'Vehicle & Machinery Repairs' && <label>Vehicle & Machinery specialist<select required defaultValue=""><option value="" disabled>Select a specialization</option><option>Bike Specialist</option><option>Tractor Specialist</option><option>JCB Specialist</option><option>All Specialist</option></select><ChevronDown className="select-icon" size={16} /></label>}
           {selectedService === 'Farming & Daily Wage Service Providers' && <label>Farming specialist<select required defaultValue=""><option value="" disabled>Select a specialization</option><option>All Farming Works Specialist</option><option>Loaders Specialist</option></select><ChevronDown className="select-icon" size={16} /></label>}
           {selectedService === 'Construction Service Providers' && <label>Construction specialist<select required defaultValue=""><option value="" disabled>Select a specialization</option><option>Masons Specialist</option><option>Labours Specialist</option></select><ChevronDown className="select-icon" size={16} /></label>}
-        </> : isContact ? <label>Your message<textarea required placeholder="Tell us how we can help" /></label> : isFeedback ? <><label>How would you rate your experience?<select required defaultValue=""><option value="" disabled>Select a rating</option><option>Excellent</option><option>Good</option><option>Needs improvement</option></select><ChevronDown className="select-icon" size={16} /></label><label>Your feedback<textarea required placeholder="Share your thoughts" /></label></> : !isAdmin && !isPayment && <label>What do you need help with?<input required type="text" placeholder="e.g. Fix a leaking tap" /></label>}
-        {!isFeedback && !isAdmin && !isPayment && <><label>Mandal<select required value={selectedMandal} onChange={(event) => setSelectedMandal(event.target.value)}><option value="" disabled>Select your mandal</option>{mandals.map((mandal) => <option key={mandal}>{mandal}</option>)}</select><ChevronDown className="select-icon" size={16} /></label><label>Village<select key={selectedMandal} required defaultValue="" disabled={!selectedMandal}><option value="" disabled>Select your village</option>{(mandalVillages[selectedMandal] || []).map((village) => <option key={village}>{village}</option>)}</select><ChevronDown className="select-icon" size={16} /></label></>}
+        </> : isContact ? <><label>Customer care numbers<div className="customer-care-list"><a href="tel:+919876543210">+91 98765 43210</a><a href="tel:+919123456789">+91 91234 56789</a></div></label><label>Your message<textarea required placeholder="Tell us how we can help" /></label></> : isFeedback ? <><label>How would you rate your experience?<select required defaultValue=""><option value="" disabled>Select a rating</option><option>Excellent</option><option>Good</option><option>Needs improvement</option></select><ChevronDown className="select-icon" size={16} /></label><label>Your feedback<textarea required placeholder="Share your thoughts" /></label></> : !isAdmin && !isPayment && <label className="voice-field">What do you need help with?<div className="voice-input-row"><input required type="text" value={customerNeed} onChange={(event) => { setCustomerNeed(event.target.value); setVoiceError('') }} placeholder="e.g. Fix a leaking tap" /><button className={isListening ? 'voice-button listening' : 'voice-button'} type="button" onClick={startVoiceInput} aria-label="Use voice command" title="Use voice command">{isListening ? <MicOff size={16} /> : <Mic size={16} />}</button></div>{voiceError && <small>{voiceError}</small>}</label>}
+        {!isFeedback && !isAdmin && !isPayment && !isCustomer && null}
         <button className="primary-button form-submit" type="submit">{isPayment ? 'Process payment' : isAdmin ? adminOtpStep ? 'Verify OTP' : 'Continue to OTP' : isFeedback ? 'Send feedback' : isContact ? 'Send message' : isLabour ? 'Create my profile' : 'Find a professional'} <ArrowRight size={18} /></button>
       </form></>}
     </section>
