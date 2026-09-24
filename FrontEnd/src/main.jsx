@@ -38,6 +38,7 @@ const profilePreviewHistory = [
 
 const categories = [
   { name: 'Construction Service Providers', icon: '🏗️', count: '5 nearby teams' },
+  { name: 'Driving Service Providers', icon: '🚘', count: '3 service types' },
   { name: 'Farming Service Providers', icon: '🌾', count: '22 nearby teams' },
   { name: 'Home Service Providers', icon: '🏠', count: '12 nearby teams' },
   { name: 'Marriage & Other Functions Service Providers', icon: '🎊', count: '12 nearby teams' },
@@ -46,6 +47,7 @@ const categories = [
 
 const labourTypes = [
   'Construction Service Providers',
+  'Driving Service Providers',
   'Farming Service Providers',
   'Home Service Providers',
   'Marriage & Other Functions Service Providers',
@@ -63,25 +65,29 @@ const marriageFunctionSpecialists = [
   { name: '★ Specialist', value: 'Specialist', description: 'All Services' },
 ]
 const vehicleSpecialists = [
-  { name: 'Bike', description: 'Motorcycles, scooters repairs' },
-  { name: 'Car', description: 'Engine, brakes, suspension, general car repairs' },
-  { name: 'Car Operators', description: 'Driving, passenger transport, vehicle handling' },
-  { name: 'JCB', description: 'Excavator, earthmover repairs' },
-  { name: 'JCB Operators', description: 'Land leveling, digging, farm construction' },
-  { name: 'Tractor', description: 'Agricultural tractors, clutch, gearbox, engine repairs' },
-  { name: 'Tractor Operators', description: 'Tractor driving, ploughing, soil preparation' },
+  { name: 'Bike Specialist', description: 'Motorcycles, scooters repairs' },
+  { name: 'Car Specialist', description: 'Engine, brakes, suspension, general car repairs' },
+  { name: 'JCB Specialist', description: 'Excavator, earthmover repairs' },
+  { name: 'Tractor Specialist', description: 'Agricultural tractors, clutch, gearbox, engine repairs' },
+]
+const drivingSpecialists = [
+  { name: 'Car Operator', description: 'Driving, passenger transport, vehicle handling' },
+  { name: 'Dozer Operator', description: 'Shifting soil, sand, or gravel for construction or farming' },
+  { name: 'JCB Operator', description: 'Land leveling, digging, farm construction' },
+  { name: 'Tractor Operator', description: 'Tractor driving, ploughing, soil preparation' },
 ]
 const farmingSpecialists = [
-  { name: 'Ploughing Operators', description: 'Tractor ploughing, soil preparation' },
+  { name: 'Dozer Providers', description: 'Shifting soil, sand, or gravel for construction or farming' },
+  { name: 'Farm Laborers', description: 'Manual sowing, weeding, harvesting support' },
+  { name: 'Fertilizer Applicators', description: 'Fertilizer distribution, soil enrichment' },
   { name: 'Harvesting Machine Operators', description: 'Combine harvesters, threshers operation' },
   { name: 'Irrigation Technicians', description: 'Borewell, drip irrigation, sprinkler setup & maintenance' },
-  { name: 'Pesticide Sprayers', description: 'Crop spraying, pest control' },
-  { name: 'Fertilizer Applicators', description: 'Fertilizer distribution, soil enrichment' },
-  { name: 'Seed Suppliers', description: 'Crop seeds, hybrid seeds, distribution' },
-  { name: 'Farm Laborers', description: 'Manual sowing, weeding, harvesting support' },
-  { name: 'Water Pump Technicians', description: 'Motor, pump installation & repair' },
   { name: 'JCB Providers', description: 'Land leveling, digging, farm construction' },
+  { name: 'Pesticide Sprayers', description: 'Crop spraying, pest control' },
+  { name: 'Ploughing Operators', description: 'Tractor ploughing, soil preparation' },
+  { name: 'Seed Suppliers', description: 'Crop seeds, hybrid seeds, distribution' },
   { name: 'Transport Providers', description: 'Crop and produce transport services' },
+  { name: 'Water Pump Technicians', description: 'Motor, pump installation & repair' },
 ]
 const homeServiceSpecialists = [
   { name: 'Appliance Technicians', description: 'Washing machines, refrigerators, AC installation & repairs' },
@@ -113,6 +119,7 @@ const constructionSpecialists = [
 ]
 const specialistsByService = {
   'Construction Service Providers': constructionSpecialists,
+  'Driving Service Providers': drivingSpecialists,
   'Farming Service Providers': farmingSpecialists,
   'Home Service Providers': homeServiceSpecialists,
   'Marriage & Other Functions Service Providers': marriageFunctionSpecialists,
@@ -651,6 +658,7 @@ function RegistrationModal({ type, submitted, setSubmitted, onSignedIn, onSignOu
           <label>What service do you offer<select required value={selectedService} onChange={(event) => setSelectedService(event.target.value)}><option value="" disabled>Select your service</option>{labourTypes.map((item) => <option key={item} value={item}>{item}</option>)}</select><ChevronDown className="select-icon" size={16} /></label>
           {selectedService === 'Electricians' && <label>Electrician specialist<select required defaultValue=""><option value="" disabled>Select a specialization</option><option>Home Specialist</option><option>Farming Motors Specialist</option><option>Both Specialist</option></select><ChevronDown className="select-icon" size={16} /></label>}
           {selectedService === 'Vehicle & Machinery Service Providers' && <label>Vehicle specialist<select required defaultValue=""><option value="" disabled>Select a specialization</option>{vehicleSpecialists.map((item) => <option key={item.name} value={item.name}>{item.name} → {item.description}</option>)}</select><ChevronDown className="select-icon" size={16} /></label>}
+          {selectedService === 'Driving Service Providers' && <label>Driving specialist<select required defaultValue=""><option value="" disabled>Select a driving service</option>{drivingSpecialists.map((item) => <option key={item.name} value={item.name}>{item.name} → {item.description}</option>)}</select><ChevronDown className="select-icon" size={16} /></label>}
           {selectedService === 'Home Service Providers' && <label>Home service type<select required defaultValue=""><option value="" disabled>Select a home service</option>{homeServiceSpecialists.map((item) => <option key={item.name} value={item.name}>{item.name} → {item.description}</option>)}</select><ChevronDown className="select-icon" size={16} /></label>}
           {selectedService === 'Farming Service Providers' && <label>Farming specialist<select required defaultValue=""><option value="" disabled>Select a specialization</option>{farmingSpecialists.map((item) => <option key={item.name} value={item.name}>{item.name} → {item.description}</option>)}</select><ChevronDown className="select-icon" size={16} /></label>}
           {selectedService === 'Construction Service Providers' && <label>Construction specialist<select required defaultValue=""><option value="" disabled>Select a specialization</option>{constructionSpecialists.map((item) => <option key={item.name} value={item.value || item.name} disabled={item.divider}>{item.divider ? item.name : `${item.name} → ${item.description}`}</option>)}</select><ChevronDown className="select-icon" size={16} /></label>}
