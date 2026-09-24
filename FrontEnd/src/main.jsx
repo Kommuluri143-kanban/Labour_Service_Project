@@ -39,7 +39,7 @@ const profilePreviewHistory = [
 const categories = [
   { name: 'Construction Service Providers', icon: '🏗️', count: '5 nearby teams' },
   { name: 'Farming Service Providers', icon: '🌾', count: '22 nearby teams' },
-  { name: 'Home Service Provider', icon: '🏠', count: '12 nearby teams' },
+  { name: 'Home Service Providers', icon: '🏠', count: '12 nearby teams' },
   { name: 'Marriage & Other Functions Service Providers', icon: '🎊', count: '12 nearby teams' },
   { name: 'Vehicle & Machinery Service Providers', icon: '🔧', count: '11 nearby teams' },
 ]
@@ -47,7 +47,7 @@ const categories = [
 const labourTypes = [
   'Construction Service Providers',
   'Farming Service Providers',
-  'Home Service Provider',
+  'Home Service Providers',
   'Marriage & Other Functions Service Providers',
   'Vehicle & Machinery Service Providers',
 ]
@@ -111,6 +111,35 @@ const constructionSpecialists = [
   { name: '<===============================>', divider: true },
   { name: '★ Specialist', value: 'Specialist', description: 'Masons + Construction Laborers' },
 ]
+const specialistsByService = {
+  'Construction Service Providers': constructionSpecialists,
+  'Farming Service Providers': farmingSpecialists,
+  'Home Service Providers': homeServiceSpecialists,
+  'Marriage & Other Functions Service Providers': marriageFunctionSpecialists,
+  'Vehicle & Machinery Service Providers': vehicleSpecialists,
+}
+
+function getSpecialistOptions(service) {
+  return (specialistsByService[service] || [])
+    .map((item) => ({
+      label: item.divider ? '<=====================================>' : item.name,
+      value: item.value || item.name,
+      description: item.description,
+      disabled: Boolean(item.divider),
+    }))
+}
+
+function matchVoiceChoice(transcript, choices) {
+  const normalize = (value) => value.toLocaleLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()
+  const spoken = normalize(transcript)
+  if (!spoken) return null
+
+  const matches = (choice) => [choice.label, choice.value].some((value) => normalize(value) === spoken)
+  return choices.find(matches) || choices.find((choice) => [choice.label, choice.value].some((value) => {
+    const normalizedOption = normalize(value)
+    return normalizedOption.startsWith(spoken) || spoken.startsWith(normalizedOption)
+  })) || null
+}
 const mandalVillages = {
   Atmakur: ['Aravedu', 'Atmakur', 'Bandarupalle', 'Battepadu', 'Botikarlapadu', 'Boyila Chiruvella', 'Chiruvella Khandrika', 'Depuru', 'Gandlavedu', 'Jangalapalle', 'Kanupurupalle', 'Karatampadu', 'Mahimalur', 'Murugalla', 'Nabbinagaram', 'Nagulapadu', 'Nallapareddipalli', 'Narampeta', 'Nellorepalem', 'Nuvvurupadu', 'Padakandla', 'Pamidipadu', 'Ramaswami Palli', 'Ravvalakollu', 'Vasili', 'Vennawada'],
   Marripadu: ['Allampadu', 'Bheemavaram', 'Brahmanapalle', 'Budawada', 'Chabolu', 'Chilakapadu', 'Chinamachanur', 'Chunchulur', 'Dharmarao Cheruvupalle', 'Irlapadu', 'Kadirinenipalle', 'Kampasamudram', 'Marripadu', 'Nagarajupadu', 'Naginenigunta', 'Nandavaram', 'Neradanampadu', 'Padamatinaidupalle', 'Pallavolu', 'Pegallapadu', 'Ponguru', 'Pongurukandriga', 'Ramanaidupalli', 'Singanapalle', 'Yepiligunta'],
@@ -451,10 +480,12 @@ function RegistrationModal({ type, submitted, setSubmitted, onSignedIn, onSignOu
   const isCustomer = type === 'customer'
   const [selectedMandal, setSelectedMandal] = useState('')
   const [selectedService, setSelectedService] = useState('')
+  const [selectedSpecialty, setSelectedSpecialty] = useState('')
   const [customerName, setCustomerName] = useState('')
   const [providerName, setProviderName] = useState('')
   const [customerNeed, setCustomerNeed] = useState('')
   const [isListening, setIsListening] = useState(false)
+  const [listeningTarget, setListeningTarget] = useState('')
   const [voiceError, setVoiceError] = useState('')
   const recognitionRef = useRef(null)
   const [adminOtp, setAdminOtp] = useState('')
@@ -484,13 +515,17 @@ function RegistrationModal({ type, submitted, setSubmitted, onSignedIn, onSignOu
     return () => recognitionRef.current?.stop()
   }, [])
 
-  const startVoiceInput = () => {
+  const startVoiceInput = (target = 'description') => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
     if (!SpeechRecognition) {
       setVoiceError('Voice input is not supported in this browser.')
       return
     }
 
+    if (recognitionRef.current && listeningTarget === target) {
+      recognitionRef.current.stop()
+      return
+    }
     if (recognitionRef.current) {
       recognitionRef.current.stop()
     }
@@ -507,19 +542,43 @@ function RegistrationModal({ type, submitted, setSubmitted, onSignedIn, onSignOu
         .trim()
 
       if (transcript) {
-        setCustomerNeed(transcript)
-        setVoiceError('')
+        if (target === 'service' || target === 'specialty') {
+          const choices = target === 'service'
+            ? labourTypes.map((value) => ({ label: value, value }))
+            : getSpecialistOptions(selectedService).filter((choice) => !choice.disabled)
+          const match = matchVoiceChoice(transcript, choices)
+          if (match && target === 'service') {
+            setSelectedService(match.value)
+            setSelectedSpecialty('')
+            setVoiceError('')
+          } else if (match) {
+            setSelectedSpecialty(match.value)
+            setVoiceError('')
+          } else {
+            setVoiceError('No matching option heard. Please try again or choose from the list.')
+          }
+        } else {
+          setCustomerNeed(transcript)
+          setVoiceError('')
+        }
       }
     }
 
-    recognition.onend = () => setIsListening(false)
+    recognition.onend = () => {
+      if (recognitionRef.current === recognition) {
+        setIsListening(false)
+        setListeningTarget('')
+      }
+    }
     recognition.onerror = () => {
       setVoiceError('Voice input is unavailable right now.')
       setIsListening(false)
+      setListeningTarget('')
     }
 
     recognitionRef.current = recognition
     setIsListening(true)
+    setListeningTarget(target)
     setVoiceError('')
     recognition.start()
   }
@@ -592,11 +651,15 @@ function RegistrationModal({ type, submitted, setSubmitted, onSignedIn, onSignOu
           <label>What service do you offer<select required value={selectedService} onChange={(event) => setSelectedService(event.target.value)}><option value="" disabled>Select your service</option>{labourTypes.map((item) => <option key={item} value={item}>{item}</option>)}</select><ChevronDown className="select-icon" size={16} /></label>
           {selectedService === 'Electricians' && <label>Electrician specialist<select required defaultValue=""><option value="" disabled>Select a specialization</option><option>Home Specialist</option><option>Farming Motors Specialist</option><option>Both Specialist</option></select><ChevronDown className="select-icon" size={16} /></label>}
           {selectedService === 'Vehicle & Machinery Service Providers' && <label>Vehicle specialist<select required defaultValue=""><option value="" disabled>Select a specialization</option>{vehicleSpecialists.map((item) => <option key={item.name} value={item.name}>{item.name} → {item.description}</option>)}</select><ChevronDown className="select-icon" size={16} /></label>}
-          {selectedService === 'Home Service Provider' && <label>Home service type<select required defaultValue=""><option value="" disabled>Select a home service</option>{homeServiceSpecialists.map((item) => <option key={item.name} value={item.name}>{item.name} → {item.description}</option>)}</select><ChevronDown className="select-icon" size={16} /></label>}
+          {selectedService === 'Home Service Providers' && <label>Home service type<select required defaultValue=""><option value="" disabled>Select a home service</option>{homeServiceSpecialists.map((item) => <option key={item.name} value={item.name}>{item.name} → {item.description}</option>)}</select><ChevronDown className="select-icon" size={16} /></label>}
           {selectedService === 'Farming Service Providers' && <label>Farming specialist<select required defaultValue=""><option value="" disabled>Select a specialization</option>{farmingSpecialists.map((item) => <option key={item.name} value={item.name}>{item.name} → {item.description}</option>)}</select><ChevronDown className="select-icon" size={16} /></label>}
           {selectedService === 'Construction Service Providers' && <label>Construction specialist<select required defaultValue=""><option value="" disabled>Select a specialization</option>{constructionSpecialists.map((item) => <option key={item.name} value={item.value || item.name} disabled={item.divider}>{item.divider ? item.name : `${item.name} → ${item.description}`}</option>)}</select><ChevronDown className="select-icon" size={16} /></label>}
           {selectedService === 'Marriage & Other Functions Service Providers' && <label>Marriage/function specialist<select required defaultValue=""><option value="" disabled>Select a specialization</option>{marriageFunctionSpecialists.map((item) => <option key={item.name} value={item.value || item.name} disabled={item.divider}>{item.divider ? item.name : `${item.name} → ${item.description}`}</option>)}</select><ChevronDown className="select-icon" size={16} /></label>}
-        </> : isContact ? <><label>Customer care numbers<div className="customer-care-list"><a href="tel:+919876543210">+91 98765 43210</a><a href="tel:+919123456789">+91 91234 56789</a></div></label><label>Your message<textarea required placeholder="Tell us how we can help" /></label></> : isFeedback ? <><label>How would you rate your experience?<select required defaultValue=""><option value="" disabled>Select a rating</option><option>Excellent</option><option>Good</option><option>Needs improvement</option></select><ChevronDown className="select-icon" size={16} /></label><label>Your feedback<textarea required placeholder="Share your thoughts" /></label></> : !isAdmin && !isPayment && <label className="voice-field">What do you need help with?<div className="voice-input-row"><input required type="text" value={customerNeed} onChange={(event) => { setCustomerNeed(event.target.value); setVoiceError('') }} placeholder="e.g. Fix a leaking tap" /><button className={isListening ? 'voice-button listening' : 'voice-button'} type="button" onClick={startVoiceInput} aria-label="Use voice command" title="Use voice command">{isListening ? <MicOff size={16} /> : <Mic size={16} />}</button></div>{voiceError && <small>{voiceError}</small>}</label>}
+        </> : isContact ? <><label>Customer care numbers<div className="customer-care-list"><a href="tel:+919876543210">+91 98765 43210</a><a href="tel:+919123456789">+91 91234 56789</a></div></label><label>Your message<textarea required placeholder="Tell us how we can help" /></label></> : isFeedback ? <><label>How would you rate your experience?<select required defaultValue=""><option value="" disabled>Select a rating</option><option>Excellent</option><option>Good</option><option>Needs improvement</option></select><ChevronDown className="select-icon" size={16} /></label><label>Your feedback<textarea required placeholder="Share your thoughts" /></label></> : isCustomer ? <>
+          <label>What do you need help with?<div className="voice-select-row"><select required value={selectedService} onChange={(event) => { setSelectedService(event.target.value); setSelectedSpecialty(''); setVoiceError('') }}><option value="" disabled>Select a service</option>{labourTypes.map((item) => <option key={item} value={item}>{item}</option>)}</select><ChevronDown className="select-icon" size={16} /><button className={isListening && listeningTarget === 'service' ? 'voice-button listening' : 'voice-button'} type="button" onClick={() => startVoiceInput('service')} aria-label="Choose a service by voice" title="Choose a service by voice">{isListening && listeningTarget === 'service' ? <MicOff size={16} /> : <Mic size={16} />}</button></div></label>
+          {selectedService && <label>Choose a service type<div className="voice-select-row"><select required value={selectedSpecialty} onChange={(event) => { setSelectedSpecialty(event.target.value); setVoiceError('') }}><option value="" disabled>Select a service type</option>{getSpecialistOptions(selectedService).map((item) => <option key={item.value} value={item.value} disabled={item.disabled}>{item.disabled ? item.label : item.description ? `${item.label} → ${item.description}` : item.label}</option>)}</select><ChevronDown className="select-icon" size={16} /><button className={isListening && listeningTarget === 'specialty' ? 'voice-button listening' : 'voice-button'} type="button" onClick={() => startVoiceInput('specialty')} aria-label="Choose a service type by voice" title="Choose a service type by voice">{isListening && listeningTarget === 'specialty' ? <MicOff size={16} /> : <Mic size={16} />}</button></div></label>}
+          {voiceError && <small className="voice-error">{voiceError}</small>}
+        </> : !isAdmin && !isPayment && <label className="voice-field">What do you need help with?<div className="voice-input-row"><input required type="text" value={customerNeed} onChange={(event) => { setCustomerNeed(event.target.value); setVoiceError('') }} placeholder="e.g. Fix a leaking tap" /><button className={isListening ? 'voice-button listening' : 'voice-button'} type="button" onClick={startVoiceInput} aria-label="Use voice command" title="Use voice command">{isListening ? <MicOff size={16} /> : <Mic size={16} />}</button></div>{voiceError && <small>{voiceError}</small>}</label>}
         {!isFeedback && !isAdmin && !isPayment && !isCustomer && null}
         <button className="primary-button form-submit" type="submit">{isPayment ? 'Process payment' : isAdmin ? adminOtpStep ? 'Verify OTP' : 'Continue to OTP' : isFeedback ? 'Send feedback' : isContact ? 'Send message' : isLabour ? 'Create my profile' : 'Find a professional'} <ArrowRight size={18} /></button>
         {isAdmin && <button className="signin-back" type="button" onClick={handleAdminBack}>&lt;- Back</button>}

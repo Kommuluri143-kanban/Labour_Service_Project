@@ -115,6 +115,11 @@ footer { display: flex; justify-content: space-between; max-width: 1220px; margi
 .voice-field { display: grid; gap: 8px; }
 .voice-input-row { display: flex; align-items: center; gap: 8px; }
 .voice-input-row input { flex: 1; }
+.voice-select-row { position: relative; display: flex; align-items: center; gap: 8px; }
+.voice-select-row select { min-width: 0; flex: 1; padding-right: 38px; }
+.voice-select-row .select-icon { right: 63px; bottom: 13px; }
+.voice-select-row .voice-button { flex: 0 0 42px; }
+.voice-error { color: #9b4935; font-size: 11px; }
 .voice-button { display: grid; place-items: center; width: 42px; height: 42px; padding: 0; border: 1px solid var(--line); border-radius: 6px; color: var(--teal); background: #fff; }
 .voice-button:hover { border-color: var(--teal); background: #edf8f6; }
 .voice-button.listening { color: #fff; border-color: #9b4935; background: #9b4935; }
