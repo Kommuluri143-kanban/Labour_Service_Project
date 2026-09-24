@@ -28,12 +28,28 @@ const labourTypes = [
 ]
 const marriageFunctionSpecialists = [
   { name: 'Caterers', description: 'Food preparation and serving staff' },
-  { name: 'Decorators', description: 'Stage, mandap, and venue decoration' },
-  { name: 'Photographers', description: 'Photography and videography services' },
-  { name: 'Musicians', description: 'Bands, DJs, traditional instrumentalists' },
-  { name: 'Makeup Artists', description: 'Bridal and guest makeup services' },
-  { name: 'Lighting Technicians', description: 'Venue lighting setup' },
   { name: 'Cleaning Staff', description: 'Venue maintenance before/after events' },
+  { name: 'Decorators', description: 'Stage, mandap, and venue decoration' },
+  { name: 'Lighting Technicians', description: 'Venue lighting setup' },
+  { name: 'Makeup Artists', description: 'Bridal and guest makeup services' },
+  { name: 'Musicians', description: 'Bands, DJs, traditional instrumentalists' },
+  { name: 'Photographers', description: 'Photography and videography services' },
+  { name: '<===============================>', divider: true },
+  { name: '★ Specialist', value: 'Specialist', description: 'All' },
+]
+const constructionSpecialists = [
+  { name: 'Carpenters', description: 'Shuttering, wooden molds, and joinery work' },
+  { name: 'Centring Fixers', description: 'Placing reinforcement bars before concreting' },
+  { name: 'Concrete Workers', description: 'Mixing, pouring, and finishing concrete' },
+  { name: 'Construction Laborers', description: 'Assisting skilled workers, carrying materials, site prep' },
+  { name: 'Electricians', description: 'Wiring and electrical systems in buildings' },
+  { name: 'Masons', description: 'Bricklaying, blockwork, and cement plastering' },
+  { name: 'Painters', description: 'Surface finishing and painting after cement work' },
+  { name: 'Plumbers', description: 'Installing pipelines through cement structures' },
+  { name: 'Tile Setters', description: 'Fixing tiles with mortar or adhesives' },
+  { name: 'Welders', description: 'Metal fabrication and structural welding' },
+  { name: '<===============================>', divider: true },
+  { name: '★ Specialist', value: 'Specialist', description: 'Masons + Construction Laborers' },
 ]
 const mandalVillages = {
   Atmakur: ['Aravedu', 'Atmakur', 'Bandarupalle', 'Battepadu', 'Botikarlapadu', 'Boyila Chiruvella', 'Chiruvella Khandrika', 'Depuru', 'Gandlavedu', 'Jangalapalle', 'Kanupurupalle', 'Karatampadu', 'Mahimalur', 'Murugalla', 'Nabbinagaram', 'Nagulapadu', 'Nallapareddipalli', 'Narampeta', 'Nellorepalem', 'Nuvvurupadu', 'Padakandla', 'Pamidipadu', 'Ramaswami Palli', 'Ravvalakollu', 'Vasili', 'Vennawada'],
@@ -45,27 +61,109 @@ const paymentScenarios = [
   { id: 'customer-to-app', label: 'Customer → Platform → Service Provider', methods: ['QR scan'] },
   { id: 'provider-to-app', label: 'Customer → Service Provider → Platform', methods: ['QR scan', 'Cash in hand'] },
 ]
+const formPaths = {
+  admin: '/Admin',
+  contact: '/ContactUs',
+  customer: '/CustomerRequest',
+  feedback: '/Feedback',
+  labour: '/ServiceProviderRegistration',
+  payment: '/PaymentExchange',
+}
+const adminViewPaths = {
+  providers: '/Admin/ServiceProvidersManagement',
+  payments: '/Admin/PaymentStatus',
+  'service-providers': '/Admin/ServiceProviders',
+}
+
+function getRouteState(pathname = window.location.pathname) {
+  const path = pathname.toLowerCase()
+  if (path === '/signin') return { entryScreen: 'signin', activeForm: null, submitted: false, adminView: 'providers' }
+  if (path === '/signup') return { entryScreen: 'signup', activeForm: null, submitted: false, adminView: 'providers' }
+  if (path === '/signout') return { entryScreen: 'signout', activeForm: null, submitted: false, adminView: 'providers' }
+  if (path === '/admin/paymentstatus') return { entryScreen: 'app', activeForm: 'admin', submitted: true, adminView: 'payments' }
+  if (path === '/admin/serviceproviders') return { entryScreen: 'app', activeForm: 'admin', submitted: true, adminView: 'service-providers' }
+  if (path === '/admin/serviceprovidersmanagement') return { entryScreen: 'app', activeForm: 'admin', submitted: true, adminView: 'providers' }
+  if (path === '/admin') return { entryScreen: 'app', activeForm: 'admin', submitted: false, adminView: 'providers' }
+
+  const formRoute = Object.entries(formPaths).find(([, routePath]) => routePath.toLowerCase() === path)
+  if (formRoute) return { entryScreen: 'app', activeForm: formRoute[0], submitted: false, adminView: 'providers' }
+  if (path === '/home') return { entryScreen: 'app', activeForm: null, submitted: false, adminView: 'providers' }
+  return { entryScreen: 'landing', activeForm: null, submitted: false, adminView: 'providers' }
+}
+
+function pushPath(path) {
+  if (window.location.pathname !== path) window.history.pushState({}, '', path)
+}
 
 function App() {
-  const [entryScreen, setEntryScreen] = useState('landing')
-  const [activeForm, setActiveForm] = useState(null)
+  const initialRoute = useRef(getRouteState()).current
+  const [entryScreen, setEntryScreen] = useState(initialRoute.entryScreen)
+  const [activeForm, setActiveForm] = useState(initialRoute.activeForm)
   const [menuOpen, setMenuOpen] = useState(false)
   const [profileOpen, setProfileOpen] = useState(false)
-  const [submitted, setSubmitted] = useState(false)
+  const [submitted, setSubmitted] = useState(initialRoute.submitted)
   const [signedIn, setSignedIn] = useState(false)
   const [providerAvailability, setProviderAvailability] = useState('Active')
+  const [adminInitialView, setAdminInitialView] = useState(initialRoute.adminView)
 
-  const openForm = (form) => {
-    setSubmitted(false)
-    setActiveForm(form)
+  const applyRouteState = (routeState) => {
+    setEntryScreen(routeState.entryScreen)
+    setActiveForm(routeState.activeForm)
+    setSubmitted(routeState.submitted)
+    setAdminInitialView(routeState.adminView)
     setMenuOpen(false)
     setProfileOpen(false)
   }
 
-  const closeForm = () => setActiveForm(null)
+  const navigateTo = (path) => {
+    pushPath(path)
+    applyRouteState(getRouteState(path))
+  }
 
-  if (entryScreen === 'landing') return <WelcomeScreen onSignIn={() => setEntryScreen('signin')} onSignUp={() => setEntryScreen('signup')} />
-  if (entryScreen === 'signin' || entryScreen === 'signup') return <SignInFlow mode={entryScreen} onBack={() => setEntryScreen('landing')} onSuccess={() => { setSignedIn(true); setEntryScreen('app') }} />
+  const openForm = (form) => {
+    pushPath(formPaths[form] || '/Home')
+    setSubmitted(false)
+    setActiveForm(form)
+    setEntryScreen('app')
+    setMenuOpen(false)
+    setProfileOpen(false)
+  }
+
+  const closeForm = () => {
+    pushPath('/Home')
+    setSubmitted(false)
+    setActiveForm(null)
+  }
+
+  const handleAdminSuccess = () => {
+    setAdminInitialView('providers')
+    pushPath(adminViewPaths.providers)
+  }
+
+  const handleAdminViewChange = (view) => {
+    setAdminInitialView(view)
+    pushPath(adminViewPaths[view] || adminViewPaths.providers)
+  }
+
+  const handleHomeSignOut = () => {
+    setSignedIn(false)
+    navigateTo('/')
+  }
+
+  const handleAdminSignOut = () => {
+    setSignedIn(false)
+    navigateTo('/Home')
+  }
+
+  useEffect(() => {
+    const handlePopState = () => applyRouteState(getRouteState())
+    window.addEventListener('popstate', handlePopState)
+    return () => window.removeEventListener('popstate', handlePopState)
+  }, [])
+
+  if (entryScreen === 'landing') return <WelcomeScreen onSignIn={() => navigateTo('/SignIn')} onSignUp={() => navigateTo('/SignUp')} />
+  if (entryScreen === 'signout') return <SignOutScreen onHome={() => navigateTo('/')} onSignIn={() => navigateTo('/SignIn')} />
+  if (entryScreen === 'signin' || entryScreen === 'signup') return <SignInFlow mode={entryScreen} onBack={() => navigateTo('/')} onSuccess={() => { setSignedIn(true); navigateTo('/Home') }} />
 
   return (
     <main className="app-shell">
@@ -90,8 +188,8 @@ function App() {
             <span className="profile-trigger-copy"><strong>{signedIn ? 'My profile' : 'Profile'}</strong><small>{signedIn ? 'Signed in' : 'View details'}</small></span>
             <ChevronDown size={16} className={profileOpen ? 'profile-chevron open' : 'profile-chevron'} />
           </button>
-          <button className="profile-signout" onClick={() => { setSignedIn(false); setProfileOpen(false); setEntryScreen('landing') }}>Sign out</button>
-          {profileOpen && <ProfilePanel availability={providerAvailability} onAvailabilityChange={setProviderAvailability} onSignOut={() => { setSignedIn(false); setProfileOpen(false) }} onClose={() => setProfileOpen(false)} />}
+          <button className="profile-signout" onClick={handleHomeSignOut}>Sign out</button>
+          {profileOpen && <ProfilePanel availability={providerAvailability} onAvailabilityChange={setProviderAvailability} onSignOut={handleHomeSignOut} onClose={() => setProfileOpen(false)} />}
         </div>
       </header>
 
@@ -136,7 +234,7 @@ function App() {
         </div>
       </div>
 
-      {activeForm && <RegistrationModal type={activeForm} submitted={submitted} setSubmitted={setSubmitted} onSignedIn={() => setSignedIn(true)} onSignOut={() => { setSignedIn(false); closeForm() }} onClose={closeForm} />}
+      {activeForm && <RegistrationModal type={activeForm} submitted={submitted} setSubmitted={setSubmitted} onSignedIn={() => setSignedIn(true)} onSignOut={handleAdminSignOut} onClose={closeForm} initialAdminView={adminInitialView} onAdminSuccess={handleAdminSuccess} onAdminViewChange={handleAdminViewChange} />}
     </main>
   )
 }
@@ -147,6 +245,17 @@ function WelcomeScreen({ onSignIn, onSignUp }) {
       <h1><span>WN</span><b>|</b><span>Work<br />Near</span></h1>
       <p className="welcome-links">Already existing user <a href="#sign-in" onClick={(event) => { event.preventDefault(); onSignIn() }}>Sign in</a></p>
       <p className="welcome-links">New user <a href="#sign-up" onClick={(event) => { event.preventDefault(); onSignUp() }}>Sign up</a></p>
+    </div>
+  </main>
+}
+
+function SignOutScreen({ onHome, onSignIn }) {
+  return <main className="welcome-screen">
+    <div className="welcome-content">
+      <h1><span>WN</span><b>|</b><span>Work<br />Near</span></h1>
+      <p className="welcome-links">You have signed out.</p>
+      <p className="welcome-links"><a href="/" onClick={(event) => { event.preventDefault(); onHome() }}>Back to home</a></p>
+      <p className="welcome-links"><a href="/SignIn" onClick={(event) => { event.preventDefault(); onSignIn() }}>Sign in again</a></p>
     </div>
   </main>
 }
@@ -247,7 +356,7 @@ function ProfilePanel({ availability, onAvailabilityChange, onSignOut, onClose }
   </section>
 }
 
-function RegistrationModal({ type, submitted, setSubmitted, onSignedIn, onSignOut, onClose }) {
+function RegistrationModal({ type, submitted, setSubmitted, onSignedIn, onSignOut, onClose, initialAdminView, onAdminSuccess, onAdminViewChange }) {
   const isLabour = type === 'labour'
   const isContact = type === 'contact'
   const isFeedback = type === 'feedback'
@@ -364,9 +473,9 @@ function RegistrationModal({ type, submitted, setSubmitted, onSignedIn, onSignOu
           <div><span>Provider receives</span><strong>₹{providerReceives.toLocaleString('en-IN')}</strong></div>
           <div><span>Platform fee</span><strong>₹{appCollects.toLocaleString('en-IN')}</strong></div>  
           <div><span>{settlementLabel}</span><strong>₹{settlementAmount.toLocaleString('en-IN')}</strong></div>
-        </div> : isAdmin ? <AdminDashboard onSignOut={onSignOut} /> : <p>{isFeedback ? 'Your thoughts help us improve the local work board.' : isContact ? 'We’ve received your message and will get back to you shortly.' : 'We’ve received your details and will be in touch shortly.'}</p>}
+        </div> : isAdmin ? <AdminDashboard initialView={initialAdminView} onViewChange={onAdminViewChange} onSignOut={onSignOut} /> : <p>{isFeedback ? 'Your thoughts help us improve the local work board.' : isContact ? 'We’ve received your message and will get back to you shortly.' : 'We’ve received your details and will be in touch shortly.'}</p>}
         {!isAdmin && <button className="primary-button" onClick={onClose}>Back to home <ArrowRight size={18} /></button>}
-      </div> : <><p className="eyebrow">{isPayment ? 'Secure transfer' : isAdmin ? adminOtpStep ? 'Mobile verification' : 'Secure access' : isFeedback ? 'Help us improve' : isContact ? 'Get in touch' : isLabour ? 'Join the network' : 'Find the right help'}</p><h2 id="modal-title">{isPayment ? 'Payment Exchange' : isAdmin ? adminOtpStep ? 'Enter your OTP' : 'Admin login' : isFeedback ? 'Tell us what you think' : isContact ? 'How can we help?' : isLabour ? 'Register as a service provider' : 'Tell us what you need'}</h2><p className="modal-intro">{isPayment ? 'Choose the payment flow, method, and commission split for a customer and service provider transaction.' : isAdmin ? adminOtpStep ? 'Enter the one-time password sent to your registered mobile number.' : 'Sign in with your email, password, and CAPTCHA to continue.' : isFeedback ? 'Share a quick rating and note about your experience.' : isContact ? 'Send us a note and our team will respond shortly.' : isLabour ? 'Share a few details and start finding work near you.' : 'We’ll help you connect with a trusted professional nearby.'}</p><form onSubmit={(event) => { event.preventDefault(); if (isAdmin && !adminOtpStep) { if (captchaAnswer.trim().toUpperCase() !== captchaCode) { setCaptchaError('CAPTCHA does not match.'); return } setAdminOtpStep(true); return } if (isAdmin && !/^\d{6}$/.test(adminOtp)) { setOtpError('Enter the 6-digit OTP sent to your mobile.'); return } if (!isLabour && !isContact && !isFeedback && !isPayment) onSignedIn(); setSubmitted(true) }}>
+      </div> : <><p className="eyebrow">{isPayment ? 'Secure transfer' : isAdmin ? adminOtpStep ? 'Mobile verification' : 'Secure access' : isFeedback ? 'Help us improve' : isContact ? 'Get in touch' : isLabour ? 'Join the network' : 'Find the right help'}</p><h2 id="modal-title">{isPayment ? 'Payment Exchange' : isAdmin ? adminOtpStep ? 'Enter your OTP' : 'Admin login' : isFeedback ? 'Tell us what you think' : isContact ? 'How can we help?' : isLabour ? 'Register as a service provider' : 'Tell us what you need'}</h2><p className="modal-intro">{isPayment ? 'Choose the payment flow, method, and commission split for a customer and service provider transaction.' : isAdmin ? adminOtpStep ? 'Enter the one-time password sent to your registered mobile number.' : 'Sign in with your email, password, and CAPTCHA to continue.' : isFeedback ? 'Share a quick rating and note about your experience.' : isContact ? 'Send us a note and our team will respond shortly.' : isLabour ? 'Share a few details and start finding work near you.' : 'We’ll help you connect with a trusted professional nearby.'}</p><form onSubmit={(event) => { event.preventDefault(); if (isAdmin && !adminOtpStep) { if (captchaAnswer.trim().toUpperCase() !== captchaCode) { setCaptchaError('CAPTCHA does not match.'); return } setAdminOtpStep(true); return } if (isAdmin && !/^\d{6}$/.test(adminOtp)) { setOtpError('Enter the 6-digit OTP sent to your mobile.'); return } if (!isLabour && !isContact && !isFeedback && !isPayment) onSignedIn(); if (isAdmin) onAdminSuccess(); setSubmitted(true) }}>
         {isPayment ? <>
           <label>Payment scenario<select required value={paymentScenario} onChange={(event) => {
             const nextScenario = event.target.value
@@ -398,8 +507,8 @@ function RegistrationModal({ type, submitted, setSubmitted, onSignedIn, onSignOu
           {selectedService === 'Electricians' && <label>Electrician specialist<select required defaultValue=""><option value="" disabled>Select a specialization</option><option>Home Specialist</option><option>Farming Motors Specialist</option><option>Both Specialist</option></select><ChevronDown className="select-icon" size={16} /></label>}
           {selectedService === 'Vehicle & Machinery Repairs' && <label>Vehicle & Machinery specialist<select required defaultValue=""><option value="" disabled>Select a specialization</option><option>Bike Specialist</option><option>Tractor Specialist</option><option>JCB Specialist</option><option>All Specialist</option></select><ChevronDown className="select-icon" size={16} /></label>}
           {selectedService === 'Farming & Daily Wage Service Providers' && <label>Farming specialist<select required defaultValue=""><option value="" disabled>Select a specialization</option><option>All Farming Works Specialist</option><option>Loaders Specialist</option></select><ChevronDown className="select-icon" size={16} /></label>}
-          {selectedService === 'Construction Service Providers' && <label>Construction specialist<select required defaultValue=""><option value="" disabled>Select a specialization</option><option>Masons Specialist</option><option>Labours Specialist</option></select><ChevronDown className="select-icon" size={16} /></label>}
-          {selectedService === 'Marriage & Other Functions Service Providers' && <label>Marriage/function specialist<select required defaultValue=""><option value="" disabled>Select a specialization</option>{marriageFunctionSpecialists.map((item) => <option key={item.name} value={item.name}>{item.name} → {item.description}</option>)}</select><ChevronDown className="select-icon" size={16} /></label>}
+          {selectedService === 'Construction Service Providers' && <label>Construction specialist<select required defaultValue=""><option value="" disabled>Select a specialization</option>{constructionSpecialists.map((item) => <option key={item.name} value={item.value || item.name} disabled={item.divider}>{item.divider ? item.name : `${item.name} → ${item.description}`}</option>)}</select><ChevronDown className="select-icon" size={16} /></label>}
+          {selectedService === 'Marriage & Other Functions Service Providers' && <label>Marriage/function specialist<select required defaultValue=""><option value="" disabled>Select a specialization</option>{marriageFunctionSpecialists.map((item) => <option key={item.name} value={item.value || item.name} disabled={item.divider}>{item.divider ? item.name : `${item.name} → ${item.description}`}</option>)}</select><ChevronDown className="select-icon" size={16} /></label>}
         </> : isContact ? <><label>Customer care numbers<div className="customer-care-list"><a href="tel:+919876543210">+91 98765 43210</a><a href="tel:+919123456789">+91 91234 56789</a></div></label><label>Your message<textarea required placeholder="Tell us how we can help" /></label></> : isFeedback ? <><label>How would you rate your experience?<select required defaultValue=""><option value="" disabled>Select a rating</option><option>Excellent</option><option>Good</option><option>Needs improvement</option></select><ChevronDown className="select-icon" size={16} /></label><label>Your feedback<textarea required placeholder="Share your thoughts" /></label></> : !isAdmin && !isPayment && <label className="voice-field">What do you need help with?<div className="voice-input-row"><input required type="text" value={customerNeed} onChange={(event) => { setCustomerNeed(event.target.value); setVoiceError('') }} placeholder="e.g. Fix a leaking tap" /><button className={isListening ? 'voice-button listening' : 'voice-button'} type="button" onClick={startVoiceInput} aria-label="Use voice command" title="Use voice command">{isListening ? <MicOff size={16} /> : <Mic size={16} />}</button></div>{voiceError && <small>{voiceError}</small>}</label>}
         {!isFeedback && !isAdmin && !isPayment && !isCustomer && null}
         <button className="primary-button form-submit" type="submit">{isPayment ? 'Process payment' : isAdmin ? adminOtpStep ? 'Verify OTP' : 'Continue to OTP' : isFeedback ? 'Send feedback' : isContact ? 'Send message' : isLabour ? 'Create my profile' : 'Find a professional'} <ArrowRight size={18} /></button>
@@ -410,8 +519,8 @@ function RegistrationModal({ type, submitted, setSubmitted, onSignedIn, onSignOu
 }
 
 
-function AdminDashboard({ onSignOut }) {
-  const [adminView, setAdminView] = useState('providers')
+function AdminDashboard({ initialView = 'providers', onViewChange, onSignOut }) {
+  const [adminView, setAdminView] = useState(initialView)
   const [providers, setProviders] = useState([
     { id: 1, name: 'Suresh Kumar', mobile: '90000 12345', address: 'Atmakur, Nellore', service: 'Electricians', customer: 'Lakshmi Reddy', customerMobile: '91234 56789', customerAddress: 'Atmakur, Nellore', serviceStatus: 'In-Progress', paymentStatus: 'Resolved - Payment pending with customer', amount: 2500, status: 'Active', blocked: false, comment: 'Active for new electrical work.', accessAdmin: null },
     { id: 2, name: 'Ravi Naidu', mobile: '90000 67890', address: 'Marripadu, Nellore', service: 'Plumbers', customer: 'Arjun Reddy', customerMobile: '92345 67890', customerAddress: 'Marripadu, Nellore', serviceStatus: 'Completed', paymentStatus: 'Resolved - Payment done by customer', amount: 1800, status: 'Active', blocked: false, comment: 'Verified provider.', accessAdmin: null },
@@ -425,6 +534,15 @@ function AdminDashboard({ onSignOut }) {
   const [editingAccessId, setEditingAccessId] = useState(null)
   const [confirmation, setConfirmation] = useState(null)
   const [adminDetails] = useState({ name: 'WorkNear Admin', mobile: '98765 43210', email: 'admin@worknear.in' })
+
+  useEffect(() => {
+    setAdminView(initialView)
+  }, [initialView])
+
+  const changeAdminView = (view) => {
+    setAdminView(view)
+    onViewChange?.(view)
+  }
 
   const updateProvider = (id, field, value) => {
     setPendingProviders((current) => current.map((provider) => provider.id === id ? { ...provider, [field]: value } : provider))
@@ -448,12 +566,12 @@ function AdminDashboard({ onSignOut }) {
   const requestConfirmation = (action, provider, onConfirm) => setConfirmation({ action, provider, onConfirm })
 
   return <div className="admin-dashboard-content">
-    <div className="admin-dashboard-header"><div><h3>{adminView === 'payments' ? 'Payment Status' : adminView === 'service-providers' ? 'Service Providers' : 'Service Providers management'}</h3></div><div className="admin-dashboard-actions">{adminView !== 'providers' && <button className="admin-dashboard-link" type="button" onClick={() => setAdminView('providers')}><ArrowLeft size={14} /> Back</button>}<button className="admin-dashboard-link" type="button" onClick={() => setAdminView('payments')}>Payment Status</button><button className="admin-dashboard-link" type="button" onClick={() => setAdminView('service-providers')}>Service Providers</button><button className="admin-signout" onClick={onSignOut}><LogOut size={15} /> Sign out</button></div></div>
+    <div className="admin-dashboard-header"><div><h3>{adminView === 'payments' ? 'Payment Status' : adminView === 'service-providers' ? 'Service Providers' : 'Service Providers Management'}</h3></div><div className="admin-dashboard-actions">{adminView !== 'providers' && <button className="admin-dashboard-link" type="button" onClick={() => changeAdminView('providers')}><ArrowLeft size={14} /> Back</button>}<button className="admin-dashboard-link" type="button" onClick={() => changeAdminView('payments')}>Payment Status</button><button className="admin-dashboard-link" type="button" onClick={() => changeAdminView('service-providers')}>Service Providers</button><button className="admin-signout" onClick={onSignOut}><LogOut size={15} /> Sign out</button></div></div>
     {adminView === 'payments' ? <AdminPaymentStatus providers={providers} /> : adminView === 'service-providers' ? <AdminServiceProviders providers={providers} /> : <>
     <div className="admin-dashboard-grid">
-      <div className="admin-stat"><strong>{providers.length}</strong><span>Active providers</span></div>
-      <div className="admin-stat"><strong>{providers.filter((provider) => provider.serviceStatus === 'In-Progress').length}</strong><span>In progress</span></div>
-      <div className="admin-stat"><strong>{pendingProviders.filter((provider) => !provider.approved).length}</strong><span>Awaiting approval</span></div>
+      <div className="admin-stat"><strong>3</strong><span>Active Service Providers</span></div>
+      <div className="admin-stat"><strong>1</strong><span>Inactive Service Provider</span></div>
+      <div className="admin-stat"><strong>2</strong><span>Blocked Service Providers</span></div>
     </div>
     <AdminTableSection title="Active Service Providers" description="Monitor approved service providers profiles.">
       <div className="admin-table-wrap"><table className="admin-table" id="service-providers"><thead><tr><th>Service Provider Name</th><th>Mobile Number</th><th>Address</th><th>Services Knows</th><th>Profile Status</th><th>Approved Admin Name</th><th>Admin Mobile Number</th></tr></thead><tbody>{providers.map((provider) => <tr key={provider.id}><td><strong>{provider.name}</strong></td><td>{provider.mobile}</td><td>{provider.address}</td><td>{provider.service || 'Service Provider'}</td><td><span className="table-status complete">{provider.status}</span></td><td>{provider.approval?.admin || provider.accessAdmin?.name || 'WorkNear Admin'}</td><td>{provider.approval?.mobile || provider.accessAdmin?.mobile || '98765 43210'}</td></tr>)}</tbody></table></div>
@@ -485,7 +603,7 @@ function ScanCodeStatus({ uploaded }) {
 }
 
 function AdminPaymentStatus({ providers }) {
-  return <section className="admin-payment-page" aria-label="Payment status"><p className="admin-payment-intro">Track resolved customer payments and pending customer payments.</p><div className="admin-table-wrap"><table className="admin-table payment-status-table"><thead><tr><th>Service Provider Name</th><th>Mobile Number</th><th>Service Address</th><th>Customer Name</th><th>Customer Mobile Number</th><th>Customer Address</th><th>Payment Status</th><th>Customer Pays</th><th>Service Provider Receives</th><th>Platform Fee</th></tr></thead><tbody>{providers.map((provider) => { const platformFee = provider.amount * 0.1; return <tr key={provider.id}><td><strong>{provider.name}</strong></td><td>{provider.mobile}</td><td>{provider.address}</td><td>{provider.customer}</td><td>{provider.customerMobile}</td><td>{provider.customerAddress}</td><td><span className={provider.paymentStatus.includes('done') ? 'table-status complete' : 'table-status progress'}>{provider.paymentStatus}</span></td><td>₹{provider.amount.toLocaleString('en-IN')}</td><td>₹{(provider.amount - platformFee).toLocaleString('en-IN')}</td><td>₹{platformFee.toLocaleString('en-IN')}</td></tr> })}</tbody></table></div></section>
+  return <section className="admin-payment-page" aria-label="Payment status"><p className="admin-payment-intro">Track resolved customer payments and pending customer payments.</p><div className="admin-table-wrap"><table className="admin-table payment-status-table"><thead><tr><th>Service Provider Name</th><th>Mobile Number</th><th>Service Address</th><th>Customer Name</th><th>Customer Mobile Number</th><th>Customer Address</th><th>Payment Status</th><th>Customer Pays</th><th>Service Provider Receives</th><th>Platform Fee</th></tr></thead><tbody>{providers.map((provider) => { const isPendingWithCustomer = provider.paymentStatus.toLowerCase().includes('pending with customer'); const customerPays = isPendingWithCustomer ? 0 : provider.amount; const platformFee = isPendingWithCustomer ? 0 : provider.amount * 0.1; const providerReceives = isPendingWithCustomer ? 0 : provider.amount - platformFee; return <tr key={provider.id}><td><strong>{provider.name}</strong></td><td>{provider.mobile}</td><td>{provider.address}</td><td>{provider.customer}</td><td>{provider.customerMobile}</td><td>{provider.customerAddress}</td><td><span className={provider.paymentStatus.includes('done') ? 'table-status complete' : 'table-status progress'}>{provider.paymentStatus}</span></td><td>₹{customerPays.toLocaleString('en-IN')}</td><td>₹{providerReceives.toLocaleString('en-IN')}</td><td>₹{platformFee.toLocaleString('en-IN')}</td></tr> })}</tbody></table></div></section>
 }
 
 function AdminTableSection({ eyebrow, title, description, children }) {
