@@ -133,3 +133,29 @@ footer { display: flex; justify-content: space-between; max-width: 1220px; margi
 .payment-summary { display: grid; gap: 11px; margin: 24px 0 28px; padding: 14px; border: 1px solid var(--line); border-radius: 8px; background: #fff; text-align: left; }
 .payment-breakdown strong { word-break: break-word; }
 .payment-summary strong { word-break: break-word; }
+.profile-panel { max-height: calc(100vh - 84px); overflow-y: auto; overscroll-behavior: contain; }
+.service-history { border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.service-history > summary { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 12px 0; color: var(--ink); cursor: pointer; font-size: 12px; font-weight: 700; list-style: none; }
+.service-history > summary::-webkit-details-marker { display: none; }
+.service-history > summary:focus-visible { outline: 2px solid var(--teal); outline-offset: 3px; }
+.service-history-summary { display: inline-flex; align-items: center; gap: 7px; color: var(--teal); font-size: 10px; }
+.service-history-content { padding: 0 0 12px; }
+.service-history-sample { margin: 0 0 8px; color: var(--muted); font-size: 10px; }
+.service-history-dates { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.profile-fields .service-history-dates label { min-width: 0; gap: 5px; font-size: 10px; }
+.profile-fields .service-history-dates input { min-width: 0; padding: 8px 5px; font-size: 10px; }
+.service-history-list { margin: 10px 0 0; padding: 0; border-top: 1px solid var(--line); list-style: none; }
+.service-history-list li { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; gap: 8px; padding: 10px 0; border-bottom: 1px solid #eee3d3; }
+.service-history-list li div { min-width: 0; }
+.service-history-list strong, .service-history-list span, .service-history-list small { display: block; overflow-wrap: anywhere; }
+.service-history-list strong { color: var(--ink); font-size: 11px; }
+.service-history-list span { margin-top: 3px; color: var(--muted); font-size: 10px; }
+.service-history-list small { margin-top: 4px; color: var(--teal); font-size: 9px; }
+.service-history-list time { padding-top: 1px; color: var(--muted); font-size: 9px; white-space: nowrap; }
+.service-history-empty { margin: 11px 0 2px; color: var(--muted); font-size: 11px; }
+.profile-avatar-wrap { position: relative; display: block; width: 58px; height: 58px; flex: 0 0 58px; }
+.profile-preview .profile-avatar-wrap > img { display: block; width: 100%; height: 100%; }
+.profile-image-edit { position: absolute; top: -4px; right: -4px; display: grid; place-items: center; width: 25px; height: 25px; border: 1px solid var(--line); border-radius: 50%; color: var(--deep-teal); background: #fff; box-shadow: 0 2px 5px rgba(31,42,42,.18); cursor: pointer; }
+.profile-image-edit:hover { color: #fff; border-color: var(--teal); background: var(--teal); }
+.profile-image-edit:focus-within { outline: 2px solid var(--teal); outline-offset: 2px; }
+.profile-image-edit input { position: absolute; width: 1px; height: 1px; overflow: hidden; opacity: 0; }
