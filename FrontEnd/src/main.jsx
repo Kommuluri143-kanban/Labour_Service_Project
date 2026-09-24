@@ -35,7 +35,7 @@ const marriageFunctionSpecialists = [
   { name: 'Musicians', description: 'Bands, DJs, traditional instrumentalists' },
   { name: 'Photographers', description: 'Photography and videography services' },
   { name: '<===============================>', divider: true },
-  { name: '★ Specialist', value: 'Specialist', description: 'All' },
+  { name: '★ Specialist', value: 'Specialist', description: 'All Services' },
 ]
 const constructionSpecialists = [
   { name: 'Carpenters', description: 'Shuttering, wooden molds, and joinery work' },
