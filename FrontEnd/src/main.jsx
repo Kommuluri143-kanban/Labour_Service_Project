@@ -1,30 +1,55 @@
 import { StrictMode, useEffect, useRef, useState } from 'react'
 import { createRoot } from 'react-dom/client'
-import { ArrowLeft, ArrowRight, Check, CheckCircle2, ChevronDown, LogOut, Menu, Mic, MicOff, Pencil, QrCode, RefreshCw, Search, ShieldCheck, UserRound, X } from 'lucide-react'
+import { ArrowLeft, ArrowRight, CalendarDays, Check, CheckCircle2, ChevronDown, LogOut, Menu, Mic, MicOff, Pencil, QrCode, RefreshCw, Search, ShieldCheck, UserRound, X } from 'lucide-react'
 import './styles.css'
 
+function toDateInputValue(date) {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+function dateDaysAgo(days) {
+  const date = new Date()
+  date.setHours(12, 0, 0, 0)
+  date.setDate(date.getDate() - days)
+  return toDateInputValue(date)
+}
+
+function getOneYearAgo() {
+  const date = new Date()
+  date.setHours(12, 0, 0, 0)
+  date.setFullYear(date.getFullYear() - 1)
+  return toDateInputValue(date)
+}
+
+function formatServiceDate(date) {
+  return new Intl.DateTimeFormat('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(`${date}T12:00:00`))
+}
+
+const profilePreviewHistory = [
+  { id: 1, service: 'Electrical repair', customer: 'Lakshmi Reddy', date: dateDaysAgo(16), amount: 2500 },
+  { id: 2, service: 'Water pump wiring', customer: 'Ravi Naidu', date: dateDaysAgo(82), amount: 1800 },
+  { id: 3, service: 'Farm motor service', customer: 'Padma Devi', date: dateDaysAgo(174), amount: 3200 },
+  { id: 4, service: 'Switchboard replacement', customer: 'Arjun Reddy', date: dateDaysAgo(276), amount: 1400 },
+  { id: 5, service: 'Pump maintenance', customer: 'Meena Devi', date: dateDaysAgo(364), amount: 2100 },
+]
+
 const categories = [
-  { name: 'Electricians', icon: '⚡', count: '18 nearby teams' },
-  { name: 'Vehicle & Machinery Repairs', icon: '🔧', count: '11 nearby teams' },
-  { name: 'Farming & Daily Wage Service Providers', icon: '🌾', count: '22 nearby teams' },
-  { name: 'Painters', icon: '🎨', count: '9 nearby teams' },
-  { name: 'Plumbers', icon: '🚰', count: '14 nearby teams' },
-  { name: 'Carpenters', icon: '🪚', count: '7 nearby teams' },
   { name: 'Construction Service Providers', icon: '🏗️', count: '5 nearby teams' },
+  { name: 'Farming Service Providers', icon: '🌾', count: '22 nearby teams' },
+  { name: 'Home Service Provider', icon: '🏠', count: '12 nearby teams' },
   { name: 'Marriage & Other Functions Service Providers', icon: '🎊', count: '12 nearby teams' },
-  { name: 'Other Service Providers', icon: '🧰', count: '16 nearby teams' },
+  { name: 'Vehicle & Machinery Service Providers', icon: '🔧', count: '11 nearby teams' },
 ]
 
 const labourTypes = [
-  'Electricians',
-  'Vehicle & Machinery Repairs',
-  'Farming & Daily Wage Service Providers',
-  'Painters',
-  'Plumbers',
-  'Carpenters',
   'Construction Service Providers',
+  'Farming Service Providers',
+  'Home Service Provider',
   'Marriage & Other Functions Service Providers',
-  'Other Service Providers',
+  'Vehicle & Machinery Service Providers',
 ]
 const marriageFunctionSpecialists = [
   { name: 'Caterers', description: 'Food preparation and serving staff' },
@@ -36,6 +61,41 @@ const marriageFunctionSpecialists = [
   { name: 'Photographers', description: 'Photography and videography services' },
   { name: '<===============================>', divider: true },
   { name: '★ Specialist', value: 'Specialist', description: 'All Services' },
+]
+const vehicleSpecialists = [
+  { name: 'Bike', description: 'Motorcycles, scooters repairs' },
+  { name: 'Car', description: 'Engine, brakes, suspension, general car repairs' },
+  { name: 'Car Operators', description: 'Driving, passenger transport, vehicle handling' },
+  { name: 'JCB', description: 'Excavator, earthmover repairs' },
+  { name: 'JCB Operators', description: 'Land leveling, digging, farm construction' },
+  { name: 'Tractor', description: 'Agricultural tractors, clutch, gearbox, engine repairs' },
+  { name: 'Tractor Operators', description: 'Tractor driving, ploughing, soil preparation' },
+]
+const farmingSpecialists = [
+  { name: 'Ploughing Operators', description: 'Tractor ploughing, soil preparation' },
+  { name: 'Harvesting Machine Operators', description: 'Combine harvesters, threshers operation' },
+  { name: 'Irrigation Technicians', description: 'Borewell, drip irrigation, sprinkler setup & maintenance' },
+  { name: 'Pesticide Sprayers', description: 'Crop spraying, pest control' },
+  { name: 'Fertilizer Applicators', description: 'Fertilizer distribution, soil enrichment' },
+  { name: 'Seed Suppliers', description: 'Crop seeds, hybrid seeds, distribution' },
+  { name: 'Farm Laborers', description: 'Manual sowing, weeding, harvesting support' },
+  { name: 'Water Pump Technicians', description: 'Motor, pump installation & repair' },
+  { name: 'JCB Providers', description: 'Land leveling, digging, farm construction' },
+  { name: 'Transport Providers', description: 'Crop and produce transport services' },
+]
+const homeServiceSpecialists = [
+  { name: 'Appliance Technicians', description: 'Washing machines, refrigerators, AC installation & repairs' },
+  { name: 'Carpenters', description: 'Furniture repair, woodwork, fittings' },
+  { name: 'Cook/Chef Services', description: 'Household cooking support' },
+  { name: 'Electricians', description: 'Wiring, lighting, power issues' },
+  { name: 'Gardening Helpers', description: 'Lawn care, plant maintenance' },
+  { name: 'Housemaids', description: 'Daily household chores, cleaning, assistance' },
+  { name: 'Laundry Services', description: 'Washing, ironing, dry cleaning' },
+  { name: 'Painters', description: 'Interior & exterior painting, wall finishing' },
+  { name: 'Plumbers', description: 'Water supply, taps, pipelines, drainage' },
+  { name: 'Security Guards', description: 'Residential security services' },
+  { name: 'TV Repair Technicians', description: 'LED, LCD, Smart TV servicing & repairs' },
+  { name: 'Water Tank Cleaners', description: 'Overhead & underground tank cleaning' },
 ]
 const constructionSpecialists = [
   { name: 'Carpenters', description: 'Shuttering, wooden molds, and joinery work' },
@@ -323,7 +383,12 @@ function ProfilePanel({ availability, onAvailabilityChange, onSignOut, onClose }
   const [mobile, setMobile] = useState('90000 12345')
   const [draftAvailability, setDraftAvailability] = useState(availability)
   const [image, setImage] = useState('/src/Service_Provider_Img.png')
+  const [historyStartDate, setHistoryStartDate] = useState(getOneYearAgo)
+  const [historyEndDate, setHistoryEndDate] = useState(() => toDateInputValue(new Date()))
   const fallbackImage = role === 'Service Provider' ? '/src/Service_Provider_Img.png' : '/src/Workers.png'
+  const visibleHistory = profilePreviewHistory
+    .filter((record) => record.date >= historyStartDate && record.date <= historyEndDate)
+    .sort((first, second) => second.date.localeCompare(first.date))
 
   const handleRoleChange = (event) => {
     const nextRole = event.target.value
@@ -342,14 +407,35 @@ function ProfilePanel({ availability, onAvailabilityChange, onSignOut, onClose }
   return <section className="profile-panel" id="profile-panel" aria-label="Profile details">
     <div className="profile-panel-heading"><div><p className="eyebrow">Your account</p><h2>Profile details</h2></div><div className="profile-panel-actions"><button className="profile-signout-heading" onClick={onSignOut}>Sign out</button><button className="profile-close" onClick={onClose} aria-label="Close profile"><X size={17} /></button></div></div>
     <div className="profile-preview">
-      <img src={image || fallbackImage} alt={`${role} profile`} />
+      <div className="profile-avatar-wrap">
+        <img src={image || fallbackImage} alt={`${role} profile`} />
+        <label className="profile-image-edit" title="Change profile image">
+          <Pencil size={13} aria-hidden="true" />
+          <input type="file" accept="image/*" aria-label="Change profile image" onChange={handleImageChange} />
+        </label>
+      </div>
       <div><strong>{name || 'Your name'}</strong><span>{role}</span><small>{mobile || 'Mobile Number'}</small></div>
     </div>
     <div className="profile-fields">
       <label>Profile type<select value={role} onChange={handleRoleChange}><option>Customer</option><option>Service Provider</option></select><ChevronDown className="select-icon" size={16} /></label>
       <label>Name<input value={name} onChange={(event) => setName(event.target.value)} placeholder="Enter your name" /></label>
       <label>Mobile number<input value={mobile} onChange={(event) => setMobile(event.target.value)} type="tel" placeholder="Enter mobile number" /></label>
-      <label className="image-upload">Profile image<input type="file" accept="image/*" onChange={handleImageChange} /></label>
+      <details className="service-history">
+        <summary><span>Service History</span><span className="service-history-summary"><span>{visibleHistory.length} records</span><CalendarDays size={16} /></span></summary>
+        <div className="service-history-content">
+          <p className="service-history-sample">Sample records</p>
+          <div className="service-history-dates">
+            <label>Start date<input type="date" value={historyStartDate} max={historyEndDate} onChange={(event) => setHistoryStartDate(event.target.value)} /></label>
+            <label>End date<input type="date" value={historyEndDate} min={historyStartDate} max={toDateInputValue(new Date())} onChange={(event) => setHistoryEndDate(event.target.value)} /></label>
+          </div>
+          {visibleHistory.length ? <ul className="service-history-list">
+            {visibleHistory.map((record) => <li key={record.id}>
+              <div><strong>{record.service}</strong><span>{record.customer}</span><small>Completed · INR {record.amount.toLocaleString('en-IN')}</small></div>
+              <time dateTime={record.date}>{formatServiceDate(record.date)}</time>
+            </li>)}
+          </ul> : <p className="service-history-empty">No service history for these dates.</p>}
+        </div>
+      </details>
       {role === 'Service Provider' && <><label>Request status<select value={draftAvailability} onChange={(event) => setDraftAvailability(event.target.value)}><option>Active</option><option>Inactive</option></select><ChevronDown className="select-icon" size={16} /></label><button className="profile-update" type="button" onClick={() => onAvailabilityChange(draftAvailability)}>Update</button></>}
     </div>
     <div className={role === 'Service Provider' && availability === 'Active' ? 'availability-note active' : 'availability-note'}><span className="status-dot" />{role === 'Service Provider' ? availability === 'Active' ? 'Accepting new service requests' : 'Not accepting service requests' : 'Customer profile ready'}</div>
@@ -505,8 +591,9 @@ function RegistrationModal({ type, submitted, setSubmitted, onSignedIn, onSignOu
         {isLabour ? <>
           <label>What service do you offer<select required value={selectedService} onChange={(event) => setSelectedService(event.target.value)}><option value="" disabled>Select your service</option>{labourTypes.map((item) => <option key={item} value={item}>{item}</option>)}</select><ChevronDown className="select-icon" size={16} /></label>
           {selectedService === 'Electricians' && <label>Electrician specialist<select required defaultValue=""><option value="" disabled>Select a specialization</option><option>Home Specialist</option><option>Farming Motors Specialist</option><option>Both Specialist</option></select><ChevronDown className="select-icon" size={16} /></label>}
-          {selectedService === 'Vehicle & Machinery Repairs' && <label>Vehicle & Machinery specialist<select required defaultValue=""><option value="" disabled>Select a specialization</option><option>Bike Specialist</option><option>Tractor Specialist</option><option>JCB Specialist</option><option>All Specialist</option></select><ChevronDown className="select-icon" size={16} /></label>}
-          {selectedService === 'Farming & Daily Wage Service Providers' && <label>Farming specialist<select required defaultValue=""><option value="" disabled>Select a specialization</option><option>All Farming Works Specialist</option><option>Loaders Specialist</option></select><ChevronDown className="select-icon" size={16} /></label>}
+          {selectedService === 'Vehicle & Machinery Service Providers' && <label>Vehicle specialist<select required defaultValue=""><option value="" disabled>Select a specialization</option>{vehicleSpecialists.map((item) => <option key={item.name} value={item.name}>{item.name} → {item.description}</option>)}</select><ChevronDown className="select-icon" size={16} /></label>}
+          {selectedService === 'Home Service Provider' && <label>Home service type<select required defaultValue=""><option value="" disabled>Select a home service</option>{homeServiceSpecialists.map((item) => <option key={item.name} value={item.name}>{item.name} → {item.description}</option>)}</select><ChevronDown className="select-icon" size={16} /></label>}
+          {selectedService === 'Farming Service Providers' && <label>Farming specialist<select required defaultValue=""><option value="" disabled>Select a specialization</option>{farmingSpecialists.map((item) => <option key={item.name} value={item.name}>{item.name} → {item.description}</option>)}</select><ChevronDown className="select-icon" size={16} /></label>}
           {selectedService === 'Construction Service Providers' && <label>Construction specialist<select required defaultValue=""><option value="" disabled>Select a specialization</option>{constructionSpecialists.map((item) => <option key={item.name} value={item.value || item.name} disabled={item.divider}>{item.divider ? item.name : `${item.name} → ${item.description}`}</option>)}</select><ChevronDown className="select-icon" size={16} /></label>}
           {selectedService === 'Marriage & Other Functions Service Providers' && <label>Marriage/function specialist<select required defaultValue=""><option value="" disabled>Select a specialization</option>{marriageFunctionSpecialists.map((item) => <option key={item.name} value={item.value || item.name} disabled={item.divider}>{item.divider ? item.name : `${item.name} → ${item.description}`}</option>)}</select><ChevronDown className="select-icon" size={16} /></label>}
         </> : isContact ? <><label>Customer care numbers<div className="customer-care-list"><a href="tel:+919876543210">+91 98765 43210</a><a href="tel:+919123456789">+91 91234 56789</a></div></label><label>Your message<textarea required placeholder="Tell us how we can help" /></label></> : isFeedback ? <><label>How would you rate your experience?<select required defaultValue=""><option value="" disabled>Select a rating</option><option>Excellent</option><option>Good</option><option>Needs improvement</option></select><ChevronDown className="select-icon" size={16} /></label><label>Your feedback<textarea required placeholder="Share your thoughts" /></label></> : !isAdmin && !isPayment && <label className="voice-field">What do you need help with?<div className="voice-input-row"><input required type="text" value={customerNeed} onChange={(event) => { setCustomerNeed(event.target.value); setVoiceError('') }} placeholder="e.g. Fix a leaking tap" /><button className={isListening ? 'voice-button listening' : 'voice-button'} type="button" onClick={startVoiceInput} aria-label="Use voice command" title="Use voice command">{isListening ? <MicOff size={16} /> : <Mic size={16} />}</button></div>{voiceError && <small>{voiceError}</small>}</label>}
