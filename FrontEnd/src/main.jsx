@@ -37,12 +37,12 @@ const profilePreviewHistory = [
 ]
 
 const categories = [
-  { name: 'Construction Service Providers', icon: '🏗️', count: '5 nearby teams' },
-  { name: 'Driving Service Providers', icon: '🚘', count: '3 service types' },
-  { name: 'Farming Service Providers', icon: '🌾', count: '22 nearby teams' },
-  { name: 'Home Service Providers', icon: '🏠', count: '12 nearby teams' },
-  { name: 'Marriage & Other Functions Service Providers', icon: '🎊', count: '12 nearby teams' },
-  { name: 'Vehicle & Machinery Service Providers', icon: '🔧', count: '11 nearby teams' },
+  { name: 'Construction Service Providers', icon: '🏗️', count: '5 -> nearby service providers' },
+  { name: 'Driving Service Providers', icon: '🚘', count: '3 -> nearby service providers' },
+  { name: 'Farming Service Providers', icon: '🌾', count: '22 -> nearby service providers' },
+  { name: 'Home Service Providers', icon: '🏠', count: '12 -> nearby service providers' },
+  { name: 'Marriage & Other Functions Service Providers', icon: '🎊', count: '12 -> nearby service providers' },
+  { name: 'Vehicle & Machinery Service Providers', icon: '🔧', count: '11 -> nearby service providers' },
 ]
 
 const labourTypes = [
@@ -191,6 +191,10 @@ function pushPath(path) {
   if (window.location.pathname !== path) window.history.pushState({}, '', path)
 }
 
+function getAppCommissionRate(amount) {
+  return Number(amount) > 10000 ? 5 : 10
+}
+
 function App() {
   const initialRoute = useRef(getRouteState()).current
   const [entryScreen, setEntryScreen] = useState(initialRoute.entryScreen)
@@ -199,6 +203,7 @@ function App() {
   const [profileOpen, setProfileOpen] = useState(false)
   const [submitted, setSubmitted] = useState(initialRoute.submitted)
   const [signedIn, setSignedIn] = useState(false)
+  const [profileAccountType, setProfileAccountType] = useState('Service Provider')
   const [providerAvailability, setProviderAvailability] = useState('Active')
   const [adminInitialView, setAdminInitialView] = useState(initialRoute.adminView)
 
@@ -226,6 +231,8 @@ function App() {
   }
 
   const closeForm = () => {
+    if (submitted && activeForm === 'labour') setProfileAccountType('Service Provider')
+    if (submitted && activeForm === 'customer') setProfileAccountType('Customer')
     pushPath('/Home')
     setSubmitted(false)
     setActiveForm(null)
@@ -272,7 +279,7 @@ function App() {
           {menuOpen ? <X size={22} /> : <Menu size={22} />}
         </button>
         <nav className={menuOpen ? 'nav-links open' : 'nav-links'}>
-          <a href="#categories" onClick={() => setMenuOpen(false)}>Find a service</a>
+          <a href="#categories" onClick={() => setMenuOpen(false)}>Find a services</a>
           <button className="nav-cta" onClick={() => openForm('labour')}>Join as a service provider</button>
           <button className="nav-cta contact-cta" onClick={() => openForm('contact')}>Contact Us</button>
           <button className="nav-cta feedback-cta" onClick={() => openForm('feedback')}>Feedback</button>
@@ -285,7 +292,7 @@ function App() {
             <ChevronDown size={16} className={profileOpen ? 'profile-chevron open' : 'profile-chevron'} />
           </button>
           <button className="profile-signout" onClick={handleHomeSignOut}>Sign out</button>
-          {profileOpen && <ProfilePanel availability={providerAvailability} onAvailabilityChange={setProviderAvailability} onSignOut={handleHomeSignOut} onClose={() => setProfileOpen(false)} />}
+          {profileOpen && <ProfilePanel accountType={profileAccountType} availability={providerAvailability} onAvailabilityChange={setProviderAvailability} onSignOut={handleHomeSignOut} onClose={() => setProfileOpen(false)} />}
         </div>
       </header>
 
@@ -330,7 +337,7 @@ function App() {
         </div>
       </div>
 
-      {activeForm && <RegistrationModal type={activeForm} submitted={submitted} setSubmitted={setSubmitted} onSignedIn={() => setSignedIn(true)} onSignOut={handleAdminSignOut} onClose={closeForm} initialAdminView={adminInitialView} onAdminSuccess={handleAdminSuccess} onAdminViewChange={handleAdminViewChange} />}
+      {activeForm && <RegistrationModal type={activeForm} submitted={submitted} setSubmitted={setSubmitted} onSignedIn={() => { setSignedIn(true); if (activeForm === 'customer') setProfileAccountType('Customer') }} onSignOut={handleAdminSignOut} onClose={closeForm} initialAdminView={adminInitialView} onAdminSuccess={handleAdminSuccess} onAdminViewChange={handleAdminViewChange} />}
     </main>
   )
 }
@@ -359,6 +366,7 @@ function SignOutScreen({ onHome, onSignIn }) {
 function SignInFlow({ mode, onBack, onSuccess }) {
   const [selectedService, setSelectedService] = useState('')
   const [selectedMandal, setSelectedMandal] = useState('')
+  const [selectedVillage, setSelectedVillage] = useState('')
   const [mobile, setMobile] = useState('')
   const [captchaAnswer, setCaptchaAnswer] = useState('')
   const [captchaCode, setCaptchaCode] = useState(() => Math.random().toString(36).slice(2, 7).toUpperCase())
@@ -403,6 +411,10 @@ function SignInFlow({ mode, onBack, onSuccess }) {
             <label>User Full Name<input required type="text" value={selectedService} onChange={(event) => setSelectedService(event.target.value)} placeholder="Enter your full name" /></label>
           </>}
           <label>Mobile Number<input required type="tel" value={mobile} onChange={(event) => setMobile(event.target.value)} placeholder="Enter mobile number" /></label>
+          {mode === 'signup' && <>
+            <label>Mandal<select required value={selectedMandal} onChange={(event) => { setSelectedMandal(event.target.value); setSelectedVillage('') }}><option value="" disabled>Select a mandal</option>{mandals.map((mandal) => <option key={mandal} value={mandal}>{mandal}</option>)}</select><ChevronDown className="select-icon" size={16} /></label>
+            <label>Village<select required value={selectedVillage} disabled={!selectedMandal} onChange={(event) => setSelectedVillage(event.target.value)}><option value="" disabled>Select a village</option>{(mandalVillages[selectedMandal] || []).map((village) => <option key={village} value={village}>{village}</option>)}</select><ChevronDown className="select-icon" size={16} /></label>
+          </>}
           <div className="captcha-field"><span>CAPTCHA</span><div className="captcha-code-row"><strong>{captchaCode}</strong><button className="captcha-refresh" type="button" onClick={refreshCaptcha} aria-label="Refresh CAPTCHA" title="Refresh CAPTCHA"><RefreshCw size={15} /></button></div><input required type="text" value={captchaAnswer} onChange={(event) => { setCaptchaAnswer(event.target.value); setCaptchaError('') }} placeholder="Enter CAPTCHA" aria-label="Enter CAPTCHA" />{captchaError && <small>{captchaError}</small>}</div>
         </>}
         {generatedOtp && <label>One-time password<input required autoFocus type="text" inputMode="numeric" pattern="[0-9]{6}" maxLength="6" value={otp} onChange={(event) => { setOtp(event.target.value.replace(/\D/g, '')); setOtpError('') }} placeholder="Enter 6-digit OTP" />{otpError && <small className="otp-error">{otpError}</small>}</label>}
@@ -413,12 +425,15 @@ function SignInFlow({ mode, onBack, onSuccess }) {
   </main>
 }
 
-function ProfilePanel({ availability, onAvailabilityChange, onSignOut, onClose }) {
-  const [role, setRole] = useState('Service Provider')
-  const [name, setName] = useState('Suresh Kumar')
-  const [mobile, setMobile] = useState('90000 12345')
+function ProfilePanel({ accountType, availability, onAvailabilityChange, onSignOut, onClose }) {
+  const [role, setRole] = useState(accountType)
+  const [draftRole, setDraftRole] = useState(accountType)
+  const canSwitchProfileType = accountType === 'Service Provider'
+  const name = 'Suresh Kumar'
+  const mobile = '90000 12345'
+  const [serviceAmount, setServiceAmount] = useState('')
   const [draftAvailability, setDraftAvailability] = useState(availability)
-  const [image, setImage] = useState('/src/Service_Provider_Img.png')
+  const [image, setImage] = useState(accountType === 'Service Provider' ? '/src/Service_Provider_Img.png' : '/src/Workers.png')
   const [historyStartDate, setHistoryStartDate] = useState(getOneYearAgo)
   const [historyEndDate, setHistoryEndDate] = useState(() => toDateInputValue(new Date()))
   const fallbackImage = role === 'Service Provider' ? '/src/Service_Provider_Img.png' : '/src/Workers.png'
@@ -428,8 +443,13 @@ function ProfilePanel({ availability, onAvailabilityChange, onSignOut, onClose }
 
   const handleRoleChange = (event) => {
     const nextRole = event.target.value
-    setRole(nextRole)
-    setImage(nextRole === 'Service Provider' ? '/src/Service_Provider_Img.png' : '/src/Workers.png')
+    setDraftRole(nextRole)
+  }
+
+  const handleProfileUpdate = () => {
+    setRole(draftRole)
+    setImage(draftRole === 'Service Provider' ? '/src/Service_Provider_Img.png' : '/src/Workers.png')
+    if (draftRole === 'Service Provider') onAvailabilityChange(draftAvailability)
   }
 
   const handleImageChange = (event) => {
@@ -453,10 +473,10 @@ function ProfilePanel({ availability, onAvailabilityChange, onSignOut, onClose }
       <div><strong>{name || 'Your name'}</strong><span>{role}</span><small>{mobile || 'Mobile Number'}</small></div>
     </div>
     <div className="profile-fields">
-      <label>Profile type<select value={role} onChange={handleRoleChange}><option>Customer</option><option>Service Provider</option></select><ChevronDown className="select-icon" size={16} /></label>
-      <label>Full name<input value={name} onChange={(event) => setName(event.target.value)} placeholder="Enter your name" /></label>
-      <label>Mobile number<input value={mobile} onChange={(event) => setMobile(event.target.value)} type="tel" placeholder="Enter mobile number" /></label>
-      <ProfileRequestActions role={role} />
+      {canSwitchProfileType && <label>Profile type<select value={draftRole} onChange={handleRoleChange}><option>Customer</option><option>Service Provider</option></select><ChevronDown className="select-icon" size={16} /></label>}
+      {canSwitchProfileType && draftRole === 'Service Provider' && <label>Request accept status<select value={draftAvailability} onChange={(event) => setDraftAvailability(event.target.value)}><option>Active</option><option>Inactive</option></select><ChevronDown className="select-icon" size={16} /></label>}
+      {canSwitchProfileType && <button className="profile-update" type="button" onClick={handleProfileUpdate}>Update</button>}
+      <ProfileRequestActions role={role} serviceAmount={serviceAmount} onServiceAmountChange={setServiceAmount} />
       <details className="service-history">
         <summary><span>Service History</span><span className="service-history-summary"><span>{visibleHistory.length} records</span><CalendarDays size={16} /></span></summary>
         <div className="service-history-content">
@@ -473,34 +493,41 @@ function ProfilePanel({ availability, onAvailabilityChange, onSignOut, onClose }
           </ul> : <p className="service-history-empty">No service history for these dates.</p>}
         </div>
       </details>
-      {role === 'Service Provider' && <><label>Request accept status<select value={draftAvailability} onChange={(event) => setDraftAvailability(event.target.value)}><option>Active</option><option>Inactive</option></select><ChevronDown className="select-icon" size={16} /></label><button className="profile-update" type="button" onClick={() => onAvailabilityChange(draftAvailability)}>Update</button></>}
     </div>
     <div className={role === 'Service Provider' && availability === 'Active' ? 'availability-note active' : 'availability-note'}><span className="status-dot" />{role === 'Service Provider' ? availability === 'Active' ? 'Accepting new service requests' : 'Not accepting service requests' : 'Customer profile ready'}</div>
   </section>
 }
 
-function ProfileRequestActions({ role }) {
+function ProfileRequestActions({ role, serviceAmount, onServiceAmountChange }) {
   const isProvider = role === 'Service Provider'
-  const [serviceAmount, setServiceAmount] = useState('')
-  const disabledReason = isProvider
-    ? 'No service request is currently assigned to this service provider.'
-    : 'No service offer is currently waiting for your decision.'
+  const [decision, setDecision] = useState('')
+  const hasServiceAmount = Number(serviceAmount) > 0
+  const formattedServiceAmount = hasServiceAmount ? Number(serviceAmount).toLocaleString('en-IN') : ''
+  const waitingForAmount = 'Waiting for the service provider to enter an amount.'
+  const customerPrompt = hasServiceAmount
+    ? 'Review the service provider amount and choose Approve or Reject.'
+    : waitingForAmount
+  const decisionPrompt = decision === 'approved' ? 'You approved this service amount.' : 'You rejected this service amount.'
+  const providerDisabledReason = 'No service request is currently assigned to this service provider.'
+  const message = isProvider ? 'Enter the service amount for the customer to review.' : decision ? decisionPrompt : customerPrompt
 
   return <section className="profile-request-actions" aria-label={`${role} service request actions`}>
     <div className="profile-request-heading">
       <strong>{isProvider ? 'Service Request' : 'Service Offer'}</strong>
       <span>{isProvider ? 'Service Provider action' : 'Customer decision'}</span>
     </div>
-    <p>{disabledReason}</p>
+    <p>{message}</p>
     <div className={isProvider ? 'profile-request-buttons provider' : 'profile-request-buttons'}>
-      {isProvider && <button type="button" className="profile-request-call" disabled title={disabledReason}>Accept and Call with Customer</button>}
-      <button type="button" disabled title={disabledReason}>Approve</button>
-      <button type="button" className="reject" disabled title={disabledReason}>Reject</button>
+      {isProvider && <button type="button" className="profile-request-call" disabled title={providerDisabledReason}>Accept and Call with Customer</button>}
+      <button type="button" disabled={isProvider || !hasServiceAmount || Boolean(decision)} onClick={() => setDecision('approved')}>Approve</button>
+      <button type="button" className="reject" disabled={isProvider || !hasServiceAmount || Boolean(decision)} onClick={() => setDecision('rejected')}>Reject</button>
     </div>
-    {isProvider && <label className="profile-request-amount">
+    <label className="profile-request-amount">
       <span>Service Amount (INR)</span>
-      <input type="number" min="0" step="1" inputMode="decimal" value={serviceAmount} onChange={(event) => setServiceAmount(event.target.value)} placeholder="Enter agreed amount" />
-    </label>}
+      {isProvider
+        ? <input type="number" min="0" step="1" inputMode="decimal" value={serviceAmount} onChange={(event) => { onServiceAmountChange(event.target.value); setDecision('') }} placeholder="Enter agreed amount" />
+        : <input type="text" value={formattedServiceAmount} readOnly placeholder="Awaiting service provider amount" aria-label="Service Amount (INR), read only" />}
+    </label>
   </section>
 }
 
@@ -528,7 +555,6 @@ function RegistrationModal({ type, submitted, setSubmitted, onSignedIn, onSignOu
   const [captchaError, setCaptchaError] = useState('')
   const [otpError, setOtpError] = useState('')
   const [amount, setAmount] = useState('2500')
-  const [commissionRate, setCommissionRate] = useState('10')
   const [paymentScenario, setPaymentScenario] = useState('customer-to-app')
   const [paymentMethod, setPaymentMethod] = useState('QR scan')
 
@@ -617,8 +643,8 @@ function RegistrationModal({ type, submitted, setSubmitted, onSignedIn, onSignOu
   }
 
   const numericAmount = Number(amount || 0)
-  const numericRate = Number(commissionRate || 0)
-  const appCommission = numericAmount * numericRate / 100
+  const commissionRate = getAppCommissionRate(numericAmount)
+  const appCommission = numericAmount * commissionRate / 100
   const providerPayout = numericAmount - appCommission
   const activeScenarioMethods = paymentScenarios.find((scenario) => scenario.id === paymentScenario)?.methods || []
   const customerPays = paymentScenario === 'customer-to-app' || paymentScenario === 'provider-to-app' ? numericAmount : 0
@@ -787,7 +813,7 @@ function ScanCodeStatus({ uploaded }) {
 }
 
 function AdminPaymentStatus({ providers }) {
-  return <section className="admin-payment-page" aria-label="Payment status"><p className="admin-payment-intro">Track resolved customer payments and pending customer payments.</p><div className="admin-table-wrap"><table className="admin-table payment-status-table"><thead><tr><th>Service Provider Name</th><th>Mobile Number</th><th>Service Address</th><th>Customer Name</th><th>Customer Mobile Number</th><th>Customer Address</th><th>Payment Status</th><th>Customer Pays</th><th>Service Provider Receives</th><th>Platform Fee</th></tr></thead><tbody>{providers.map((provider) => { const isPendingWithCustomer = provider.paymentStatus.toLowerCase().includes('pending with customer'); const customerPays = isPendingWithCustomer ? 0 : provider.amount; const platformFee = isPendingWithCustomer ? 0 : provider.amount * 0.1; const providerReceives = isPendingWithCustomer ? 0 : provider.amount - platformFee; return <tr key={provider.id}><td><strong>{provider.name}</strong></td><td>{provider.mobile}</td><td>{provider.address}</td><td>{provider.customer}</td><td>{provider.customerMobile}</td><td>{provider.customerAddress}</td><td><span className={provider.paymentStatus.includes('done') ? 'table-status complete' : 'table-status progress'}>{provider.paymentStatus}</span></td><td>₹{customerPays.toLocaleString('en-IN')}</td><td>₹{providerReceives.toLocaleString('en-IN')}</td><td>₹{platformFee.toLocaleString('en-IN')}</td></tr> })}</tbody></table></div></section>
+  return <section className="admin-payment-page" aria-label="Payment status"><p className="admin-payment-intro">Track resolved customer payments and pending customer payments.</p><div className="admin-table-wrap"><table className="admin-table payment-status-table"><thead><tr><th>Service Provider Name</th><th>Mobile Number</th><th>Service Address</th><th>Customer Name</th><th>Customer Mobile Number</th><th>Customer Address</th><th>Payment Status</th><th>Customer Pays</th><th>Service Provider Receives</th><th>Platform Fee</th></tr></thead><tbody>{providers.map((provider) => { const isPendingWithCustomer = provider.paymentStatus.toLowerCase().includes('pending with customer'); const customerPays = isPendingWithCustomer ? 0 : provider.amount; const platformFee = isPendingWithCustomer ? 0 : provider.amount * getAppCommissionRate(provider.amount) / 100; const providerReceives = isPendingWithCustomer ? 0 : provider.amount - platformFee; return <tr key={provider.id}><td><strong>{provider.name}</strong></td><td>{provider.mobile}</td><td>{provider.address}</td><td>{provider.customer}</td><td>{provider.customerMobile}</td><td>{provider.customerAddress}</td><td><span className={provider.paymentStatus.includes('done') ? 'table-status complete' : 'table-status progress'}>{provider.paymentStatus}</span></td><td>₹{customerPays.toLocaleString('en-IN')}</td><td>₹{providerReceives.toLocaleString('en-IN')}</td><td>₹{platformFee.toLocaleString('en-IN')}</td></tr> })}</tbody></table></div></section>
 }
 
 function AdminTableSection({ eyebrow, title, description, children }) {

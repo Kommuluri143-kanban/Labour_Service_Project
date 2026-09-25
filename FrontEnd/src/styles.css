@@ -154,6 +154,7 @@ footer { display: flex; justify-content: space-between; max-width: 1220px; margi
 .profile-request-amount input { width: 100%; min-height: 38px; padding: 9px 10px; border: 1px solid #cccfc8; border-radius: 4px; color: var(--ink); background: #fff; font-size: 12px; }
 .profile-request-amount input:focus { border-color: var(--teal); outline: 0; box-shadow: 0 0 0 3px rgba(33,107,104,.11); }
 .profile-request-amount input:disabled { cursor: not-allowed; background: #f5f5f2; opacity: .7; }
+.profile-request-amount input[readonly] { cursor: default; background: #f5f5f2; }
 .service-history { border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
 .service-history > summary { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 12px 0; color: var(--ink); cursor: pointer; font-size: 12px; font-weight: 700; list-style: none; }
 .service-history > summary::-webkit-details-marker { display: none; }
