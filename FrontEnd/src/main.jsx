@@ -454,8 +454,9 @@ function ProfilePanel({ availability, onAvailabilityChange, onSignOut, onClose }
     </div>
     <div className="profile-fields">
       <label>Profile type<select value={role} onChange={handleRoleChange}><option>Customer</option><option>Service Provider</option></select><ChevronDown className="select-icon" size={16} /></label>
-      <label>Name<input value={name} onChange={(event) => setName(event.target.value)} placeholder="Enter your name" /></label>
+      <label>Full name<input value={name} onChange={(event) => setName(event.target.value)} placeholder="Enter your name" /></label>
       <label>Mobile number<input value={mobile} onChange={(event) => setMobile(event.target.value)} type="tel" placeholder="Enter mobile number" /></label>
+      <ProfileRequestActions role={role} />
       <details className="service-history">
         <summary><span>Service History</span><span className="service-history-summary"><span>{visibleHistory.length} records</span><CalendarDays size={16} /></span></summary>
         <div className="service-history-content">
@@ -472,9 +473,34 @@ function ProfilePanel({ availability, onAvailabilityChange, onSignOut, onClose }
           </ul> : <p className="service-history-empty">No service history for these dates.</p>}
         </div>
       </details>
-      {role === 'Service Provider' && <><label>Request status<select value={draftAvailability} onChange={(event) => setDraftAvailability(event.target.value)}><option>Active</option><option>Inactive</option></select><ChevronDown className="select-icon" size={16} /></label><button className="profile-update" type="button" onClick={() => onAvailabilityChange(draftAvailability)}>Update</button></>}
+      {role === 'Service Provider' && <><label>Request accept status<select value={draftAvailability} onChange={(event) => setDraftAvailability(event.target.value)}><option>Active</option><option>Inactive</option></select><ChevronDown className="select-icon" size={16} /></label><button className="profile-update" type="button" onClick={() => onAvailabilityChange(draftAvailability)}>Update</button></>}
     </div>
     <div className={role === 'Service Provider' && availability === 'Active' ? 'availability-note active' : 'availability-note'}><span className="status-dot" />{role === 'Service Provider' ? availability === 'Active' ? 'Accepting new service requests' : 'Not accepting service requests' : 'Customer profile ready'}</div>
+  </section>
+}
+
+function ProfileRequestActions({ role }) {
+  const isProvider = role === 'Service Provider'
+  const [serviceAmount, setServiceAmount] = useState('')
+  const disabledReason = isProvider
+    ? 'No service request is currently assigned to this service provider.'
+    : 'No service offer is currently waiting for your decision.'
+
+  return <section className="profile-request-actions" aria-label={`${role} service request actions`}>
+    <div className="profile-request-heading">
+      <strong>{isProvider ? 'Service Request' : 'Service Offer'}</strong>
+      <span>{isProvider ? 'Service Provider action' : 'Customer decision'}</span>
+    </div>
+    <p>{disabledReason}</p>
+    <div className={isProvider ? 'profile-request-buttons provider' : 'profile-request-buttons'}>
+      {isProvider && <button type="button" className="profile-request-call" disabled title={disabledReason}>Accept and Call with Customer</button>}
+      <button type="button" disabled title={disabledReason}>Approve</button>
+      <button type="button" className="reject" disabled title={disabledReason}>Reject</button>
+    </div>
+    {isProvider && <label className="profile-request-amount">
+      <span>Service Amount (INR)</span>
+      <input type="number" min="0" step="1" inputMode="decimal" value={serviceAmount} onChange={(event) => setServiceAmount(event.target.value)} placeholder="Enter agreed amount" />
+    </label>}
   </section>
 }
 
