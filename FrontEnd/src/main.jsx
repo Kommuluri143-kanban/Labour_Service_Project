@@ -54,21 +54,27 @@ const labourTypes = [
   'Vehicle & Machinery Service Providers',
 ]
 const marriageFunctionSpecialists = [
-  { name: 'Caterers', description: 'Food preparation and serving staff' },
+  { name: 'Caterers', description: 'Food preparation, serving staff' },
   { name: 'Cleaning Staff', description: 'Venue maintenance before/after events' },
-  { name: 'Decorators', description: 'Stage, mandap, and venue decoration' },
+  { name: 'Decorators', description: 'Stage, mandap, venue decoration' },
   { name: 'Lighting Technicians', description: 'Venue lighting setup' },
-  { name: 'Makeup Artists', description: 'Bridal and guest makeup services' },
+  { name: 'Makeup Artists', description: 'Bridal, groom, guest makeup services' },
   { name: 'Musicians', description: 'Bands, DJs, traditional instrumentalists' },
-  { name: 'Photographers', description: 'Photography and videography services' },
+  { name: 'Photographers', description: 'Photography, videography services' },
+  { name: 'Purohitulu', description: 'Conducting weddings, rituals, vrathas, poojas' },
   { name: '<===============================>', divider: true },
+  { name: '★ Cooking Master', value: 'Cooking Master', description: 'Preparing meals for functions' },
   { name: '★ Specialist', value: 'Specialist', description: 'All Services' },
 ]
+const musicianTypes = ['Bands', 'DJs', 'Traditional Instrumentalists']
+const farmLaborTasks = ['Manual sowing', 'Manual transplanting', 'Weeding', 'Bundling/stacking support']
 const vehicleSpecialists = [
   { name: 'Bike Specialist', description: 'Motorcycles, scooters repairs' },
   { name: 'Car Specialist', description: 'Engine, brakes, suspension, general car repairs' },
   { name: 'JCB Specialist', description: 'Excavator, earthmover repairs' },
   { name: 'Tractor Specialist', description: 'Agricultural tractors, clutch, gearbox, engine repairs' },
+  { name: '<======================>', divider: true },
+  { name: '★ Specialist', value: 'Specialist', description: 'All Services' },
 ]
 const drivingSpecialists = [
   { name: 'Car Operator', description: 'Driving, passenger transport, vehicle handling' },
@@ -78,28 +84,34 @@ const drivingSpecialists = [
 ]
 const farmingSpecialists = [
   { name: 'Dozer Providers', description: 'Shifting soil, sand, or gravel for construction or farming' },
-  { name: 'Farm Laborers', description: 'Manual sowing, weeding, harvesting support' },
+  { name: 'Farm Laborers', description: 'Manual sowing, manual transplanting, weeding, bundling/stacking support' },
   { name: 'Fertilizer Applicators', description: 'Fertilizer distribution, soil enrichment' },
   { name: 'Harvesting Machine Operators', description: 'Combine harvesters, threshers operation' },
   { name: 'Irrigation Technicians', description: 'Borewell, drip irrigation, sprinkler setup & maintenance' },
   { name: 'JCB Providers', description: 'Land leveling, digging, farm construction' },
+  { name: 'Land Fencing', description: 'Installing barbed wire, chain link, and concrete fencing for farmland' },
   { name: 'Pesticide Sprayers', description: 'Crop spraying, pest control' },
-  { name: 'Ploughing Operators', description: 'Tractor ploughing, soil preparation' },
+  { name: 'Tractor Operators', description: 'Tractor ploughing, soil preparation' },
   { name: 'Seed Suppliers', description: 'Crop seeds, hybrid seeds, distribution' },
   { name: 'Transport Providers', description: 'Crop and produce transport services' },
+  { name: 'Tree Cutters', description: 'Cutting and trimming Eucalyptus and Cedrus deodara trees' },
+  { name: 'Tree Planters', description: 'Planting Eucalyptus and Cedrus deodara trees, ensuring proper pit' },
   { name: 'Water Pump Technicians', description: 'Motor, pump installation & repair' },
+  { name: '<===============================>', divider: true },
+  { name: 'Multi-Select Option', value: 'Multi-Select' },
 ]
 const homeServiceSpecialists = [
   { name: 'Appliance Technicians', description: 'Washing machines, refrigerators, AC installation & repairs' },
   { name: 'Carpenters', description: 'Furniture repair, woodwork, fittings' },
   { name: 'Cook/Chef Services', description: 'Household cooking support' },
-  { name: 'Electricians', description: 'Wiring, lighting, power issues' },
+  { name: 'Electricians', description: 'Wiring, lighting, Fans and power issues' },
   { name: 'Gardening Helpers', description: 'Lawn care, plant maintenance' },
   { name: 'Housemaids', description: 'Daily household chores, cleaning, assistance' },
   { name: 'Laundry Services', description: 'Washing, ironing, dry cleaning' },
   { name: 'Painters', description: 'Interior & exterior painting, wall finishing' },
   { name: 'Plumbers', description: 'Water supply, taps, pipelines, drainage' },
   { name: 'Security Guards', description: 'Residential security services' },
+  { name: 'Septic Tank Cleaner', description: 'Cleaning and maintaining septic tanks' },
   { name: 'TV Repair Technicians', description: 'LED, LCD, Smart TV servicing & repairs' },
   { name: 'Water Tank Cleaners', description: 'Overhead & underground tank cleaning' },
 ]
@@ -1377,6 +1389,9 @@ function RegistrationModal({ type, submitted, setSubmitted, onSignedIn, onSignOu
   const [selectedMandal, setSelectedMandal] = useState('')
   const [selectedService, setSelectedService] = useState('')
   const [selectedSpecialty, setSelectedSpecialty] = useState('')
+  const [selectedMusicianType, setSelectedMusicianType] = useState('')
+  const [selectedMultiServices, setSelectedMultiServices] = useState([])
+  const [selectedFarmLaborTask, setSelectedFarmLaborTask] = useState('')
   const [customerName, setCustomerName] = useState('')
   const [providerName, setProviderName] = useState('')
   const [customerNeed, setCustomerNeed] = useState('')
@@ -1445,9 +1460,15 @@ function RegistrationModal({ type, submitted, setSubmitted, onSignedIn, onSignOu
           if (match && target === 'service') {
             setSelectedService(match.value)
             setSelectedSpecialty('')
+            setSelectedMusicianType('')
+            setSelectedMultiServices([])
+            setSelectedFarmLaborTask('')
             setVoiceError('')
           } else if (match) {
             setSelectedSpecialty(match.value)
+            setSelectedMusicianType('')
+            setSelectedMultiServices([])
+            setSelectedFarmLaborTask('')
             setVoiceError('')
           } else {
             setVoiceError('No matching option heard. Please try again or choose from the list.')
@@ -1543,17 +1564,25 @@ function RegistrationModal({ type, submitted, setSubmitted, onSignedIn, onSignOu
           <label>One-time password<input required type="text" inputMode="numeric" pattern="[0-9]{6}" maxLength="6" value={adminOtp} onChange={(event) => { setAdminOtp(event.target.value.replace(/\D/g, '')); setOtpError('') }} placeholder="Enter 6-digit OTP" />{otpError && <small className="otp-error">{otpError}</small>}</label>
         </> : null}
         {isLabour ? <>
-          <label>What service do you offer<select required value={selectedService} onChange={(event) => setSelectedService(event.target.value)}><option value="" disabled>Select your service</option>{labourTypes.map((item) => <option key={item} value={item}>{item}</option>)}</select><ChevronDown className="select-icon" size={16} /></label>
+          <label>What service do you offer<select required value={selectedService} onChange={(event) => { setSelectedService(event.target.value); setSelectedSpecialty(''); setSelectedMusicianType(''); setSelectedMultiServices([]); setSelectedFarmLaborTask('') }}><option value="" disabled>Select your service</option>{labourTypes.map((item) => <option key={item} value={item}>{item}</option>)}</select><ChevronDown className="select-icon" size={16} /></label>
           {selectedService === 'Electricians' && <label>Electrician specialist<select required defaultValue=""><option value="" disabled>Select a specialization</option><option>Home Specialist</option><option>Farming Motors Specialist</option><option>Both Specialist</option></select><ChevronDown className="select-icon" size={16} /></label>}
-          {selectedService === 'Vehicle & Machinery Service Providers' && <label>Vehicle specialist<select required defaultValue=""><option value="" disabled>Select a specialization</option>{vehicleSpecialists.map((item) => <option key={item.name} value={item.name}>{item.name} → {item.description}</option>)}</select><ChevronDown className="select-icon" size={16} /></label>}
+          {selectedService === 'Vehicle & Machinery Service Providers' && <label>Vehicle specialist<select required defaultValue=""><option value="" disabled>Select a specialization</option>{vehicleSpecialists.map((item) => <option key={item.name} value={item.value || item.name} disabled={item.divider}>{item.divider ? item.name : `${item.name} → ${item.description}`}</option>)}</select><ChevronDown className="select-icon" size={16} /></label>}
           {selectedService === 'Driving Service Providers' && <label>Driving specialist<select required defaultValue=""><option value="" disabled>Select a driving service</option>{drivingSpecialists.map((item) => <option key={item.name} value={item.name}>{item.name} → {item.description}</option>)}</select><ChevronDown className="select-icon" size={16} /></label>}
           {selectedService === 'Home Service Providers' && <label>Home service type<select required defaultValue=""><option value="" disabled>Select a home service</option>{homeServiceSpecialists.map((item) => <option key={item.name} value={item.name}>{item.name} → {item.description}</option>)}</select><ChevronDown className="select-icon" size={16} /></label>}
-          {selectedService === 'Farming Service Providers' && <label>Farming specialist<select required defaultValue=""><option value="" disabled>Select a specialization</option>{farmingSpecialists.map((item) => <option key={item.name} value={item.name}>{item.name} → {item.description}</option>)}</select><ChevronDown className="select-icon" size={16} /></label>}
+          {selectedService === 'Farming Service Providers' && <label>Farming specialist<select required value={selectedSpecialty} onChange={(event) => { setSelectedSpecialty(event.target.value); setSelectedFarmLaborTask(''); setSelectedMultiServices([]) }}><option value="" disabled>Select a specialization</option>{farmingSpecialists.map((item) => <option key={item.name} value={item.value || item.name} disabled={item.divider}>{item.divider ? item.name : item.description ? `${item.name} → ${item.description}` : item.name}</option>)}</select><ChevronDown className="select-icon" size={16} /></label>}
+          {selectedService === 'Farming Service Providers' && selectedSpecialty === 'Multi-Select' && <fieldset className="service-multiselect"><legend>Service types</legend>{farmingSpecialists.filter((item) => !item.divider && item.value !== 'Multi-Select').map((item, index) => <label className="service-multiselect-option" key={item.name}><input type="checkbox" checked={selectedMultiServices.includes(item.name)} required={selectedMultiServices.length === 0 && index === 0} onChange={(event) => { const isChecked = event.target.checked; setSelectedMultiServices((current) => isChecked ? [...current, item.name] : current.filter((service) => service !== item.name)); if (item.name === 'Farm Laborers' && !isChecked) setSelectedFarmLaborTask('') }} /><span>{item.name}</span></label>)}</fieldset>}
+          {selectedService === 'Farming Service Providers' && (selectedSpecialty === 'Farm Laborers' || (selectedSpecialty === 'Multi-Select' && selectedMultiServices.includes('Farm Laborers'))) && <label>Farm labor task<select required value={selectedFarmLaborTask} onChange={(event) => setSelectedFarmLaborTask(event.target.value)}><option value="" disabled>Select a task</option>{farmLaborTasks.map((task) => <option key={task} value={task}>{task}</option>)}</select><ChevronDown className="select-icon" size={16} /></label>}
           {selectedService === 'Construction Service Providers' && <label>Construction specialist<select required defaultValue=""><option value="" disabled>Select a specialization</option>{constructionSpecialists.map((item) => <option key={item.name} value={item.value || item.name} disabled={item.divider}>{item.divider ? item.name : `${item.name} → ${item.description}`}</option>)}</select><ChevronDown className="select-icon" size={16} /></label>}
-          {selectedService === 'Marriage & Other Functions Service Providers' && <label>Marriage/function specialist<select required defaultValue=""><option value="" disabled>Select a specialization</option>{marriageFunctionSpecialists.map((item) => <option key={item.name} value={item.value || item.name} disabled={item.divider}>{item.divider ? item.name : `${item.name} → ${item.description}`}</option>)}</select><ChevronDown className="select-icon" size={16} /></label>}
+          {selectedService === 'Marriage & Other Functions Service Providers' && <label>Marriage/function specialist<select required value={selectedSpecialty} onChange={(event) => { setSelectedSpecialty(event.target.value); setSelectedMusicianType(''); setSelectedMultiServices([]) }}><option value="" disabled>Select a specialization</option>{marriageFunctionSpecialists.map((item) => <option key={item.name} value={item.value || item.name} disabled={item.divider}>{item.divider ? item.name : `${item.name} → ${item.description}`}</option>)}<option value="Multi-Select">★ Multi-Select Option</option></select><ChevronDown className="select-icon" size={16} /></label>}
+          {selectedService === 'Marriage & Other Functions Service Providers' && selectedSpecialty === 'Multi-Select' && <fieldset className="service-multiselect"><legend>Service types</legend>{marriageFunctionSpecialists.filter((item) => !item.divider && item.value !== 'Specialist').map((item, index) => <label className="service-multiselect-option" key={item.name}><input type="checkbox" checked={selectedMultiServices.includes(item.name)} required={selectedMultiServices.length === 0 && index === 0} onChange={(event) => { const isChecked = event.target.checked; setSelectedMultiServices((current) => isChecked ? [...current, item.name] : current.filter((service) => service !== item.name)); if (item.name === 'Musicians' && !isChecked) setSelectedMusicianType('') }} /><span>{item.name}</span></label>)}</fieldset>}
+          {selectedService === 'Marriage & Other Functions Service Providers' && (selectedSpecialty === 'Musicians' || (selectedSpecialty === 'Multi-Select' && selectedMultiServices.includes('Musicians'))) && <label>Choose a music type<select required value={selectedMusicianType} onChange={(event) => setSelectedMusicianType(event.target.value)}><option value="" disabled>Select a music type</option>{musicianTypes.map((type) => <option key={type} value={type}>{type}</option>)}</select><ChevronDown className="select-icon" size={16} /></label>}
         </> : isContact ? <><label>Customer care numbers<div className="customer-care-list"><a href="tel:+919876543210">+91 98765 43210</a><a href="tel:+919123456789">+91 91234 56789</a></div></label><label>Your message<textarea required placeholder="Tell us how we can help" /></label></> : isFeedback ? <><label>How would you rate your experience?<select required defaultValue=""><option value="" disabled>Select a rating</option><option>Excellent</option><option>Good</option><option>Needs improvement</option></select><ChevronDown className="select-icon" size={16} /></label><label>Your feedback<textarea required placeholder="Share your thoughts" /></label></> : isCustomer ? <>
-          <label>What do you need help with?<div className="voice-select-row"><select required value={selectedService} onChange={(event) => { setSelectedService(event.target.value); setSelectedSpecialty(''); setVoiceError('') }}><option value="" disabled>Select a service</option>{labourTypes.map((item) => <option key={item} value={item}>{item}</option>)}</select><ChevronDown className="select-icon" size={16} /><button className={isListening && listeningTarget === 'service' ? 'voice-button listening' : 'voice-button'} type="button" onClick={() => startVoiceInput('service')} aria-label="Choose a service by voice" title="Choose a service by voice">{isListening && listeningTarget === 'service' ? <MicOff size={16} /> : <Mic size={16} />}</button></div></label>
-          {selectedService && <label>Choose a service type<div className="voice-select-row"><select required value={selectedSpecialty} onChange={(event) => { setSelectedSpecialty(event.target.value); setVoiceError('') }}><option value="" disabled>Select a service type</option>{getSpecialistOptions(selectedService).map((item) => <option key={item.value} value={item.value} disabled={item.disabled}>{item.disabled ? item.label : item.description ? `${item.label} → ${item.description}` : item.label}</option>)}</select><ChevronDown className="select-icon" size={16} /><button className={isListening && listeningTarget === 'specialty' ? 'voice-button listening' : 'voice-button'} type="button" onClick={() => startVoiceInput('specialty')} aria-label="Choose a service type by voice" title="Choose a service type by voice">{isListening && listeningTarget === 'specialty' ? <MicOff size={16} /> : <Mic size={16} />}</button></div></label>}
+          <label>What do you need help with?<div className="voice-select-row"><select required value={selectedService} onChange={(event) => { setSelectedService(event.target.value); setSelectedSpecialty(''); setSelectedMusicianType(''); setSelectedMultiServices([]); setSelectedFarmLaborTask(''); setVoiceError('') }}><option value="" disabled>Select a service</option>{labourTypes.map((item) => <option key={item} value={item}>{item}</option>)}</select><ChevronDown className="select-icon" size={16} /><button className={isListening && listeningTarget === 'service' ? 'voice-button listening' : 'voice-button'} type="button" onClick={() => startVoiceInput('service')} aria-label="Choose a service by voice" title="Choose a service by voice">{isListening && listeningTarget === 'service' ? <MicOff size={16} /> : <Mic size={16} />}</button></div></label>
+          {selectedService && <label>Choose a service type<div className="voice-select-row"><select required value={selectedSpecialty} onChange={(event) => { setSelectedSpecialty(event.target.value); setSelectedMusicianType(''); setSelectedMultiServices([]); setSelectedFarmLaborTask(''); setVoiceError('') }}><option value="" disabled>Select a service type</option>{getSpecialistOptions(selectedService).map((item) => <option key={item.value} value={item.value} disabled={item.disabled}>{item.disabled ? item.label : item.description ? `${item.label} → ${item.description}` : item.label}</option>)}{selectedService === 'Marriage & Other Functions Service Providers' && <option value="Multi-Select">★ Multi-Select Option</option>}</select><ChevronDown className="select-icon" size={16} /><button className={isListening && listeningTarget === 'specialty' ? 'voice-button listening' : 'voice-button'} type="button" onClick={() => startVoiceInput('specialty')} aria-label="Choose a service type by voice" title="Choose a service type by voice">{isListening && listeningTarget === 'specialty' ? <MicOff size={16} /> : <Mic size={16} />}</button></div></label>}
+          {selectedService === 'Farming Service Providers' && selectedSpecialty === 'Multi-Select' && <fieldset className="service-multiselect"><legend>Service types</legend>{farmingSpecialists.filter((item) => !item.divider && item.value !== 'Multi-Select').map((item, index) => <label className="service-multiselect-option" key={item.name}><input type="checkbox" checked={selectedMultiServices.includes(item.name)} required={selectedMultiServices.length === 0 && index === 0} onChange={(event) => { const isChecked = event.target.checked; setSelectedMultiServices((current) => isChecked ? [...current, item.name] : current.filter((service) => service !== item.name)); if (item.name === 'Farm Laborers' && !isChecked) setSelectedFarmLaborTask('') }} /><span>{item.name}</span></label>)}</fieldset>}
+          {selectedService === 'Farming Service Providers' && (selectedSpecialty === 'Farm Laborers' || (selectedSpecialty === 'Multi-Select' && selectedMultiServices.includes('Farm Laborers'))) && <label>Farm labor task<select required value={selectedFarmLaborTask} onChange={(event) => setSelectedFarmLaborTask(event.target.value)}><option value="" disabled>Select a task</option>{farmLaborTasks.map((task) => <option key={task} value={task}>{task}</option>)}</select><ChevronDown className="select-icon" size={16} /></label>}
+          {isCustomer && selectedService === 'Marriage & Other Functions Service Providers' && selectedSpecialty === 'Multi-Select' && <fieldset className="service-multiselect"><legend>Service types</legend>{marriageFunctionSpecialists.filter((item) => !item.divider && item.value !== 'Specialist').map((item, index) => <label className="service-multiselect-option" key={item.name}><input type="checkbox" checked={selectedMultiServices.includes(item.name)} required={selectedMultiServices.length === 0 && index === 0} onChange={(event) => { const isChecked = event.target.checked; setSelectedMultiServices((current) => isChecked ? [...current, item.name] : current.filter((service) => service !== item.name)); if (item.name === 'Musicians' && !isChecked) setSelectedMusicianType('') }} /><span>{item.name}</span></label>)}</fieldset>}
+          {(selectedSpecialty === 'Musicians' || (isCustomer && selectedService === 'Marriage & Other Functions Service Providers' && selectedSpecialty === 'Multi-Select' && selectedMultiServices.includes('Musicians'))) && <label>Choose a music type<select required value={selectedMusicianType} onChange={(event) => setSelectedMusicianType(event.target.value)}><option value="" disabled>Select a music type</option>{musicianTypes.map((type) => <option key={type} value={type}>{type}</option>)}</select><ChevronDown className="select-icon" size={16} /></label>}
           {voiceError && <small className="voice-error">{voiceError}</small>}
         </> : !isAdmin && !isPayment && <label className="voice-field">What do you need help with?<div className="voice-input-row"><input required type="text" value={customerNeed} onChange={(event) => { setCustomerNeed(event.target.value); setVoiceError('') }} placeholder="e.g. Fix a leaking tap" /><button className={isListening ? 'voice-button listening' : 'voice-button'} type="button" onClick={startVoiceInput} aria-label="Use voice command" title="Use voice command">{isListening ? <MicOff size={16} /> : <Mic size={16} />}</button></div>{voiceError && <small>{voiceError}</small>}</label>}
         {!isFeedback && !isAdmin && !isPayment && !isCustomer && null}

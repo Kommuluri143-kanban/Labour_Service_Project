@@ -119,6 +119,11 @@ footer { display: flex; justify-content: space-between; max-width: 1220px; margi
 .voice-select-row select { min-width: 0; flex: 1; padding-right: 38px; }
 .voice-select-row .select-icon { right: 63px; bottom: 13px; }
 .voice-select-row .voice-button { flex: 0 0 42px; }
+.modal .service-multiselect { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 14px; min-width: 0; margin: 0; padding: 10px 12px 12px; border: 1px solid var(--line); border-radius: 4px; background: #fff; }
+.modal .service-multiselect legend { padding: 0 5px; color: var(--muted); font-size: 12px; font-weight: 700; }
+.modal .service-multiselect-option { position: static; display: flex; align-items: center; gap: 8px; min-width: 0; color: var(--ink); font-size: 12px; font-weight: 500; line-height: 1.35; cursor: pointer; }
+.modal .service-multiselect-option input[type="checkbox"] { flex: 0 0 16px; width: 16px; height: 16px; margin: 0; padding: 0; border: 0; border-radius: 2px; accent-color: var(--teal); }
+.modal .service-multiselect-option input[type="checkbox"]:focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; }
 .voice-error { color: #9b4935; font-size: 11px; }
 .voice-button { display: grid; place-items: center; width: 42px; height: 42px; padding: 0; border: 1px solid var(--line); border-radius: 6px; color: var(--teal); background: #fff; }
 .voice-button:hover { border-color: var(--teal); background: #edf8f6; }
