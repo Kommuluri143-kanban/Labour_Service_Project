@@ -151,7 +151,7 @@ const mandalVillages = {
   'A.S.Peta': [
     'Akbarabad',
     'Anumasamudram',
-    'A.S.Peta',
+    'A.S.Peta Town',
     'Chandulurupadu',
     'Chiramana',
     'Chouta Bheemavaram',
@@ -188,7 +188,7 @@ const mandalVillages = {
     'Neelaya Palem',
     'Padamatipalem',
     'Peramana',
-    'Sangam',
+    'Sangam Town',
     'Talupurupadu',
     'Tharunavaya',
     'Vangallu',
@@ -215,7 +215,7 @@ const mandalVillages = {
     'Pandrangi',
     'Pedda Nagampalle',
     'Pokalingayapalli',
-    'Seetharamapuram',
+    'Seetharamapuram Town',
     'Singareddypalle',
     'Vempallethoka',
   ],
@@ -238,7 +238,7 @@ const mandalVillages = {
     'Sakunalapalle',
     'Sunnamvarichintala',
     'Thirumalapuram',
-    'Udayagiri',
+    'Udayagiri Town',
     'Vengal Rao Nagar',
   ],
   'Nellore Urban': [
@@ -249,9 +249,45 @@ const mandalVillages = {
     'Kakutur',
     'Kommalapadu',
     'Mottadugunta',
-    'Nellore (Municipal Corporation area)',
     'Peddacherukuru',
     'Vedayapalem',
+  ],
+  'Nellore Rural': [
+    'Akkacheruvupadu',
+    'Allipuram',
+    'Amancherla',
+    'Ambapuram',
+    'Devarapalem',
+    'Donthali',
+    'Gollakandukur',
+    'Gudipallipadu',
+    'Gundlapalem',
+    'Kakupalle',
+    'Kalivelaepalem',
+    'Kallurpalle',
+    'Kandamur',
+    'Kanuparthipadu',
+    'Kommarapudi',
+    'Kondayampalle',
+    'Kondlapudi',
+    'Kotha Vellanti',
+    'Madaraja Gudur',
+    'Mannavarappadu',
+    'Mattempadu',
+    'Mogallapalem',
+    'Mulumudi',
+    'Nellore 1',
+    'Ogurupadu',
+    'Padarupalle',
+    'Patha Vellanti',
+    'Pedda Cherukur',
+    'Penubarthi',
+    'Pottepalem',
+    'Sajjapuram',
+    'Southmopur',
+    'Upputur',
+    'Vellanti',
+    'Visavaviletipadu',
   ],
   Muthukur: [
     'Amudalapadu',
@@ -260,7 +296,7 @@ const mandalVillages = {
     'Krishna Patnam',
     'Mamidi Padu',
     'Mollur',
-    'Muthukuru',
+    'Muthukur Town',
     'Narikela Palli',
     'Nelaturu',
     'Pathurivari Kandrigi',
@@ -293,7 +329,7 @@ const mandalVillages = {
     'Thatipartipalem',
     'Thikkavarappadu',
     'Thirumalamma Palem',
-    'Venkatachalam',
+    'Venkatachalam Town',
   ],
   Manubolu: [
     'Akkampeta',
@@ -310,7 +346,7 @@ const mandalVillages = {
     'Kommalapudi',
     'Kudithipalle',
     'Madamanuru',
-    'Manubolu',
+    'Manubolu Town',
     'Muddumudi',
     'Parlapadu',
     'Piduru',
@@ -320,6 +356,7 @@ const mandalVillages = {
     'Venkanapalem',
   ],
   Buchireddypalem: [
+    'Buchireddypalem Town',
     'Chellayapalem',
     'Damaramadugu',
     'Isakapalem',
@@ -339,7 +376,7 @@ const mandalVillages = {
     'Cherlo Palem',
     'Gangavaram',
     'Inamadugu',
-    'Kovur',
+    'Kovur Town',
     'Legunta Padu',
     'Modegunta',
     'Padugupadu',
@@ -352,7 +389,7 @@ const mandalVillages = {
     'China Annaluru',
     'Dubagunta',
     'Gudladona',
-    'Kaligiri',
+    'Kaligiri Town',
     'Kavali Musthapuram',
     'Kothapeta',
     'Krakuturu',
@@ -375,6 +412,28 @@ const mandalVillages = {
     'Yepinapi',
     'Yerukulareddypalem',
   ],
+  Kavali: [
+    'Amudaladinne',
+    'Anemadugu',
+    'Budamagunta',
+    'Chalamcherla',
+    'Chenchuganipalem',
+    'Chennayapalem',
+    'Gowravaram',
+    'Kavali Town',
+    'Kothapalle',
+    'Laxmipuram',
+    'Maddurupadu',
+    'Mannangidinne',
+    'Musunuru',
+    'Pedda Pattapu Palem',
+    'Rajuvari Chintala Palem',
+    'Rudrakota',
+    'Sarvayapalem',
+    'Siripuram',
+    'Thallapalem',
+    'Thummalapenta',
+  ],
   Kondapuram: [
     'Audimurthipuram',
     'Bhimavarappadu',
@@ -388,6 +447,7 @@ const mandalVillages = {
     'Iskadamerla',
     'Kasturinaidupalle',
     'Kommi',
+    'Kondapuram Town',
     'Kumara Venkatapuram',
     'Kunkuvaripalem',
     'Mallavarappadu',
@@ -435,7 +495,7 @@ const mandalVillages = {
     'Thurpurompidodla',
     'Timmareddypalle',
     'Turpurompidodla',
-    'Varikuntapadu',
+    'Varikuntapadu Town',
     'Vempadu',
     'Viruvuru',
     'Yerramreddypalle',
@@ -445,7 +505,7 @@ const mandalVillages = {
     'Bhyravaram',
     'Bodavaripalli',
     'Brahmeswaram',
-    'Duttalur',
+    'Duttalur Town',
     'Kothapeta',
     'Mandallanaidupalle',
     'Mandallapalle',
@@ -467,7 +527,7 @@ const mandalVillages = {
     'China Kraka',
     'Chowdavaram',
     'Gattupalle',
-    'Jaladanki',
+    'Jaladanki Town',
     'Jammalapalem',
     'Kammavaripalem',
     'Kesavaram',
@@ -481,7 +541,7 @@ const mandalVillages = {
   Bogole: [
     'Allimadugu',
     'Bitragunta',
-    'Bogole',
+    'Bogole Town',
     'Chenaraunipalem',
     'Jakkepalligudur',
     'Juvvaladinne',
@@ -501,7 +561,7 @@ const mandalVillages = {
     'Bodagudipadu',
     'Chennuru',
     'Choutaputhedu',
-    'Dagadarthi',
+    'Dagadarthi Town',
     'Damavaram',
     'Dharamavaram',
     'Dundigam',
@@ -535,7 +595,7 @@ const mandalVillages = {
     'Utukuru',
     'Varini',
     'Vavilla',
-    'Vidavalur',
+    'Vidavalur Town',
   ],
   Kodavalur: [
     'Alurupadu',
@@ -546,7 +606,7 @@ const mandalVillages = {
     'Gotlapalem',
     'Goutam Nagar',
     'Gundalamma Palem',
-    'Kodavalur',
+    'Kodavalur Town',
     'Kothavangallu',
     'Maneguntapadu',
     'Naidu Palem',
@@ -559,7 +619,7 @@ const mandalVillages = {
     'Yellayapalem',
   ],
   Allur: [
-    'Allur',
+    'Allur Town',
     'Allurupeta',
     'Anathabotlavari Khandrika',
     'Batrakagollu',
@@ -609,7 +669,7 @@ const mandalVillages = {
     'Raganaramapuram',
     'Rajula Yerra Gunta Palem',
     'Samudralavari Khandrika',
-    'Sydapuram',
+    'Sydapuram Town',
     'Thippi Reddy Palle',
     'Thokalapudi',
     'Thummala Thalupur',
@@ -646,7 +706,7 @@ const mandalVillages = {
     'Penubarthi',
     'Penubarthi Gopasamudram',
     'Puligilapadu',
-    'Rapur',
+    'Rapur Town',
     'Raviguntapalle',
     'Sanayapalem',
     'Sankurathri Palle',
@@ -689,7 +749,7 @@ const mandalVillages = {
     'Navooru',
     'Nedurupalle',
     'Parlapalle',
-    'Podalakur',
+    'Podalakur Town',
     'Prabagiripatnam',
     'Pulikollu',
     'R.Y.Palem',
@@ -704,8 +764,7 @@ const mandalVillages = {
   ],
   Indukurpet: [
     'Gangapatnam',
-    'Indukurpet Bit – I',
-    'Indukurpet Bit – II',
+    'Indukurpet Town',
     'Jangamvani Doruvu',
     'Koduruturu',
     'Komarika',
@@ -741,6 +800,7 @@ const mandalVillages = {
     'Potlapudi',
     'Sivarampuram',
     'Thotapalle',
+    'Thotapalli Gudur Town',
     'Varakavipadu',
     'Varigonda',
     'Venkanapalem',
@@ -749,7 +809,7 @@ const mandalVillages = {
   ],
   Ananthasagaram: [
     'Amanichiruvella',
-    'Ananthasagaram',
+    'Ananthasagaram Town',
     'Bedusupalle',
     'Bommavaram',
     'Chapurallapalle',
@@ -771,14 +831,14 @@ const mandalVillages = {
     'Varekuntapadu',
     'Vengampalli',
   ],
-  Atmakur: ['Aravedu', 'Atmakur', 'Bandarupalle', 'Battepadu', 'Botikarlapadu', 'Boyila Chiruvella', 'Chiruvella Khandrika', 'Depuru', 'Gandlavedu', 'Jangalapalle', 'Kanupurupalle', 'Karatampadu', 'Mahimalur', 'Murugalla', 'Nabbinagaram', 'Nagulapadu', 'Nallapareddipalli', 'Narampeta', 'Nellorepalem', 'Nuvvurupadu', 'Padakandla', 'Pamidipadu', 'Ramaswami Palli', 'Ravvalakollu', 'Vasili', 'Vennawada'],
+  Atmakur: ['Aravedu', 'Atmakur Town', 'Bandarupalle', 'Battepadu', 'Botikarlapadu', 'Boyila Chiruvella', 'Chiruvella Khandrika', 'Depuru', 'Gandlavedu', 'Jangalapalle', 'Kanupurupalle', 'Karatampadu', 'Mahimalur', 'Murugalla', 'Nabbinagaram', 'Nagulapadu', 'Nallapareddipalli', 'Narampeta', 'Narsapuram', 'Nellorepalem', 'Nuvvurupadu', 'Padakandla', 'Pamidipadu', 'Ramaswami Palli', 'Ravvalakollu', 'Vasili', 'Vennawada'],
   Chillakur: [
     'Addepalle',
     'Ankulapaturu',
     'Annambaka',
     'Ballavolu',
     'Budanam',
-    'Chillakur (Part)',
+    'Chillakur Town',
     'Chinthavaram',
     'East Kanupuru',
     'Ippapudi',
@@ -812,7 +872,7 @@ const mandalVillages = {
   ],
   Chejerla: [
     'Billupadu',
-    'Chejerla',
+    'Chejerla Town',
     'Chittaluru',
     'Gollapalle',
     'Kakivaya',
@@ -839,10 +899,11 @@ const mandalVillages = {
     'Ayyavaripalem',
     'Chemidthi',
     'Chennuru – I',
-    'Chennuru – II (Part)',
+    'Chennuru – II',
     'Gollapalle',
     'Guduru (East) (Og)',
     'Guduru (West) (Og)',
+    'Gudur Town',
     'Kandali',
     'Kandra',
     'Kommaneturu',
@@ -872,7 +933,7 @@ const mandalVillages = {
     'Chintalatmakuru',
     'Dachuru',
     'Isakapalle',
-    'Kaluvoya',
+    'Kaluvoya Town',
     'Kanupurupalle',
     'Kesamanenipalle',
     'Koturupalle',
@@ -896,7 +957,7 @@ const mandalVillages = {
     'Illukurupadu',
     'Karlapudi',
     'Kesavaram',
-    'Kota',
+    'Kota Town',
     'Kothapalem',
     'Kothapatnam',
     'Lakshmakka Khandriga @ Chembadipalem',
@@ -910,8 +971,8 @@ const mandalVillages = {
     'Uthama Nellore',
     'Vanjivaka',
   ],
-  Marripadu: ['Allampadu', 'Bheemavaram', 'Brahmanapalle', 'Budawada', 'Chabolu', 'Chilakapadu', 'Chinamachanur', 'Chunchulur', 'Dharmarao Cheruvupalle', 'Irlapadu', 'Kadirinenipalle', 'Kampasamudram', 'Marripadu', 'Nagarajupadu', 'Naginenigunta', 'Nandavaram', 'Neradanampadu', 'Padamatinaidupalle', 'Pallavolu', 'Pegallapadu', 'Ponguru', 'Pongurukandriga', 'Ramanaidupalli', 'Singanapalle', 'Yepiligunta'],
-  Vinjamur: ['Bukkapuram', 'Chakalakonda', 'Chandrapadia', 'Chinthalapalem', 'Gundemadakala', 'Janardhanapuram', 'Katepalle', 'Kistipuram', 'Nallagonda', 'Nandigunta', 'Ravipadu', 'Sankavaram', 'Thamidapadu', 'Utukuru', 'Vinjamur'],
+  Marripadu: ['Allampadu', 'Bheemavaram', 'Brahmanapalle', 'Budawada', 'Chabolu', 'Chilakapadu', 'Chinamachanur', 'Chunchulur', 'Dharmarao Cheruvupalle', 'Irlapadu', 'Kadirinenipalle', 'Kampasamudram', 'Marripadu Town', 'Nagarajupadu', 'Naginenigunta', 'Nandavaram', 'Neradanampadu', 'Padamatinaidupalle', 'Pallavolu', 'Pegallapadu', 'Ponguru', 'Pongurukandriga', 'Ramanaidupalli', 'Singanapalle', 'Yepiligunta'],
+  Vinjamur: ['Bukkapuram', 'Chakalakonda', 'Chandrapadia', 'Chinthalapalem', 'Gundemadakala', 'Janardhanapuram', 'Katepalle', 'Kistipuram', 'Nallagonda', 'Nandigunta', 'Ravipadu', 'Sankavaram', 'Thamidapadu', 'Utukuru', 'Vinjamur Town'],
 }
 const mandals = Object.keys(mandalVillages).sort()
 const divisions = ['Atmakur', 'Gudur', 'Kavali', 'Nellore']
@@ -1051,7 +1112,7 @@ function App() {
           {menuOpen ? <X size={22} /> : <Menu size={22} />}
         </button>
         <nav className={menuOpen ? 'nav-links open' : 'nav-links'}>
-          <a href="#categories" onClick={() => setMenuOpen(false)}>Find a services</a>
+          <a href="#categories" onClick={() => setMenuOpen(false)}>Find services</a>
           <button className="nav-cta" onClick={() => openForm('labour')}>Join as a service provider</button>
           <button className="nav-cta contact-cta" onClick={() => openForm('contact')}>Contact Us</button>
           <button className="nav-cta feedback-cta" onClick={() => openForm('feedback')}>Feedback</button>
@@ -1188,7 +1249,7 @@ function SignInFlow({ mode, onBack, onSuccess }) {
           {mode === 'signup' && <>
             <label>Division<select required value={selectedDivision} onChange={(event) => { setSelectedDivision(event.target.value); setSelectedMandal(''); setSelectedVillage('') }}><option value="" disabled>Select a division</option>{divisions.map((division) => <option key={division} value={division}>{division}</option>)}</select><ChevronDown className="select-icon" size={16} /></label>
             <label>Mandal<select required value={selectedMandal} onChange={(event) => { setSelectedMandal(event.target.value); setSelectedVillage('') }}><option value="" disabled>Select a mandal</option>{availableMandals.map((mandal) => <option key={mandal} value={mandal}>{mandal}</option>)}</select><ChevronDown className="select-icon" size={16} /></label>
-            <label>Village / Locality<select required={availableVillages.length > 0} value={selectedVillage} disabled={!selectedMandal || availableVillages.length === 0} onChange={(event) => setSelectedVillage(event.target.value)}><option value="" disabled>{selectedMandal && availableVillages.length === 0 ? 'No village options available' : 'Select a village'}</option>{availableVillages.map((village) => <option key={village} value={village}>{village}</option>)}</select><ChevronDown className="select-icon" size={16} /></label>
+            <label>Village / Locality<select required={availableVillages.length > 0} value={selectedVillage} disabled={!selectedMandal || availableVillages.length === 0} onChange={(event) => setSelectedVillage(event.target.value)}><option value="" disabled>{selectedMandal && availableVillages.length === 0 ? 'No village options available' : 'Select a village / locality'}</option>{availableVillages.map((village) => <option key={village} value={village}>{village}</option>)}</select><ChevronDown className="select-icon" size={16} /></label>
           </>}
           <div className="captcha-field"><div className="captcha-code-row"><strong>{captchaCode}</strong><button className="captcha-refresh" type="button" onClick={refreshCaptcha} aria-label="Refresh CAPTCHA" title="Refresh CAPTCHA"><RefreshCw size={15} /></button></div><input required type="text" value={captchaAnswer} onChange={(event) => { setCaptchaAnswer(event.target.value); setCaptchaError('') }} placeholder="Enter CAPTCHA" aria-label="Enter CAPTCHA" />{captchaError && <small>{captchaError}</small>}</div>
         </>}
@@ -1476,7 +1537,7 @@ function RegistrationModal({ type, submitted, setSubmitted, onSignedIn, onSignOu
         </> : isAdmin && !adminOtpStep ? <>
           <label>Admin email<input required type="email" placeholder="admin@worknear.in" /></label>
           <label>Password<input required type="password" placeholder="Enter password" /></label>
-          <div className="captcha-field"><span>CAPTCHA</span><div className="captcha-code-row"><strong>{captchaCode}</strong><button className="captcha-refresh" type="button" onClick={refreshCaptcha} aria-label="Refresh CAPTCHA" title="Refresh CAPTCHA"><RefreshCw size={15} /></button></div><input required type="text" value={captchaAnswer} onChange={(event) => { setCaptchaAnswer(event.target.value); setCaptchaError('') }} placeholder="Enter CAPTCHA" aria-label="Enter CAPTCHA" />{captchaError && <small>{captchaError}</small>}</div>
+          <div className="captcha-field"><div className="captcha-code-row"><strong>{captchaCode}</strong><button className="captcha-refresh" type="button" onClick={refreshCaptcha} aria-label="Refresh CAPTCHA" title="Refresh CAPTCHA"><RefreshCw size={15} /></button></div><input required type="text" value={captchaAnswer} onChange={(event) => { setCaptchaAnswer(event.target.value); setCaptchaError('') }} placeholder="Enter CAPTCHA" aria-label="Enter CAPTCHA" />{captchaError && <small>{captchaError}</small>}</div>
         </> : isAdmin ? <>
           <div className="otp-notice">OTP sent to your registered mobile number.</div>
           <label>One-time password<input required type="text" inputMode="numeric" pattern="[0-9]{6}" maxLength="6" value={adminOtp} onChange={(event) => { setAdminOtp(event.target.value.replace(/\D/g, '')); setOtpError('') }} placeholder="Enter 6-digit OTP" />{otpError && <small className="otp-error">{otpError}</small>}</label>
