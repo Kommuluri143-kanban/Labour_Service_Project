@@ -41,6 +41,7 @@ const categories = [
   { name: 'Driving Service Providers', icon: '🚘', count: '3 -> nearby service providers' },
   { name: 'Farming Service Providers', icon: '🌾', count: '22 -> nearby service providers' },
   { name: 'Home Service Providers', icon: '🏠', count: '12 -> nearby service providers' },
+  { name: 'Loader Service Providers', icon: '🚜', count: '0 -> nearby service providers' },
   { name: 'Marriage & Other Functions Service Providers', icon: '🎊', count: '12 -> nearby service providers' },
   { name: 'Vehicle & Machinery Service Providers', icon: '🔧', count: '11 -> nearby service providers' },
 ]
@@ -50,6 +51,7 @@ const labourTypes = [
   'Driving Service Providers',
   'Farming Service Providers',
   'Home Service Providers',
+  'Loader Service Providers',
   'Marriage & Other Functions Service Providers',
   'Vehicle & Machinery Service Providers',
 ]
@@ -61,6 +63,7 @@ const marriageFunctionSpecialists = [
   { name: 'Makeup Artists', description: 'Bridal, groom, guest makeup services' },
   { name: 'Musicians', description: 'Bands, DJs, traditional instrumentalists' },
   { name: 'Photographers', description: 'Photography, videography services' },
+  { name: 'Printing Providers', description: 'Printing wedding cards, banners/flex, related services' },
   { name: 'Purohitulu', description: 'Conducting weddings, rituals, vrathas, poojas' },
   { name: '<===============================>', divider: true },
   { name: '★ Cooking Master', value: 'Cooking Master', description: 'Preparing meals for functions' },
@@ -81,6 +84,10 @@ const drivingSpecialists = [
   { name: 'Dozer Operator', description: 'Shifting soil, sand, or gravel for construction or farming' },
   { name: 'JCB Operator', description: 'Land leveling, digging, farm construction' },
   { name: 'Tractor Operator', description: 'Tractor driving, ploughing, soil preparation' },
+]
+const loaderSpecialists = [
+  { name: 'Loading & Unloading Providers', description: 'Operating loaders to load soil, sand, cement, gravel, and others.' },
+  { name: 'Crop Bags Loaders', description: 'Calculate and load crop bags onto lorries or other vehicles' },
 ]
 const farmingSpecialists = [
   { name: 'Dozer Providers', description: 'Shifting soil, sand, or gravel for construction or farming' },
@@ -124,6 +131,7 @@ const constructionSpecialists = [
   { name: 'Masons', description: 'Bricklaying, blockwork, and cement plastering' },
   { name: 'Painters', description: 'Surface finishing and painting after cement work' },
   { name: 'Plumbers', description: 'Installing pipelines through cement structures' },
+  { name: 'Tractor Services', description: 'Transporting bricks, sand, pebbles/gravel, and other construction materials' },
   { name: 'Tile Setters', description: 'Fixing tiles with mortar or adhesives' },
   { name: 'Welders', description: 'Metal fabrication and structural welding' },
   { name: '<===============================>', divider: true },
@@ -134,6 +142,7 @@ const specialistsByService = {
   'Driving Service Providers': drivingSpecialists,
   'Farming Service Providers': farmingSpecialists,
   'Home Service Providers': homeServiceSpecialists,
+  'Loader Service Providers': loaderSpecialists,
   'Marriage & Other Functions Service Providers': marriageFunctionSpecialists,
   'Vehicle & Machinery Service Providers': vehicleSpecialists,
 }
@@ -1000,7 +1009,7 @@ const divisionMandals = {
 }
 const paymentScenarios = [
   { id: 'customer-to-app', label: 'Customer → Platform → Service Provider', methods: ['QR scan'] },
-  { id: 'provider-to-app', label: 'Customer → Service Provider → Platform', methods: ['QR scan', 'Cash in hand'] },
+  { id: 'provider-to-app', label: 'Customer → Service Provider → Platform', methods: ['Cash in hand'] },
 ]
 const formPaths = {
   admin: '/Admin',
@@ -1213,6 +1222,7 @@ function SignInFlow({ mode, onBack, onSuccess }) {
   const [selectedDivision, setSelectedDivision] = useState('')
   const [selectedMandal, setSelectedMandal] = useState('')
   const [selectedVillage, setSelectedVillage] = useState('')
+  const [selectedProfileType, setSelectedProfileType] = useState('')
   const [mobile, setMobile] = useState('')
   const [captchaAnswer, setCaptchaAnswer] = useState('')
   const [captchaCode, setCaptchaCode] = useState(() => Math.random().toString(36).slice(2, 7).toUpperCase())
@@ -1262,6 +1272,7 @@ function SignInFlow({ mode, onBack, onSuccess }) {
             <label>Division<select required value={selectedDivision} onChange={(event) => { setSelectedDivision(event.target.value); setSelectedMandal(''); setSelectedVillage('') }}><option value="" disabled>Select a division</option>{divisions.map((division) => <option key={division} value={division}>{division}</option>)}</select><ChevronDown className="select-icon" size={16} /></label>
             <label>Mandal<select required value={selectedMandal} onChange={(event) => { setSelectedMandal(event.target.value); setSelectedVillage('') }}><option value="" disabled>Select a mandal</option>{availableMandals.map((mandal) => <option key={mandal} value={mandal}>{mandal}</option>)}</select><ChevronDown className="select-icon" size={16} /></label>
             <label>Village / Locality<select required={availableVillages.length > 0} value={selectedVillage} disabled={!selectedMandal || availableVillages.length === 0} onChange={(event) => setSelectedVillage(event.target.value)}><option value="" disabled>{selectedMandal && availableVillages.length === 0 ? 'No village options available' : 'Select a village / locality'}</option>{availableVillages.map((village) => <option key={village} value={village}>{village}</option>)}</select><ChevronDown className="select-icon" size={16} /></label>
+            <label>Profile type<select required value={selectedProfileType} onChange={(event) => setSelectedProfileType(event.target.value)}><option value="" disabled>Select a profile type</option><option>Customer</option><option>Service Provider</option><option>Admin</option><option>Employer</option></select><ChevronDown className="select-icon" size={16} /></label>
           </>}
           <div className="captcha-field"><div className="captcha-code-row"><strong>{captchaCode}</strong><button className="captcha-refresh" type="button" onClick={refreshCaptcha} aria-label="Refresh CAPTCHA" title="Refresh CAPTCHA"><RefreshCw size={15} /></button></div><input required type="text" value={captchaAnswer} onChange={(event) => { setCaptchaAnswer(event.target.value); setCaptchaError('') }} placeholder="Enter CAPTCHA" aria-label="Enter CAPTCHA" />{captchaError && <small>{captchaError}</small>}</div>
         </>}
@@ -1280,6 +1291,7 @@ function ProfilePanel({ accountType, availability, onAvailabilityChange, onSignO
   const name = 'Suresh Kumar'
   const mobile = '90000 12345'
   const [serviceAmount, setServiceAmount] = useState('')
+  const [serviceOfferStatus, setServiceOfferStatus] = useState('pending')
   const [draftAvailability, setDraftAvailability] = useState(availability)
   const [image, setImage] = useState(accountType === 'Service Provider' ? '/src/Service_Provider_Img.png' : '/src/Workers.png')
   const [historyStartDate, setHistoryStartDate] = useState(getOneYearAgo)
@@ -1324,7 +1336,7 @@ function ProfilePanel({ accountType, availability, onAvailabilityChange, onSignO
       {canSwitchProfileType && <label>Profile type<select value={draftRole} onChange={handleRoleChange}><option>Customer</option><option>Service Provider</option></select><ChevronDown className="select-icon" size={16} /></label>}
       {canSwitchProfileType && draftRole === 'Service Provider' && <label>Request accept status<select value={draftAvailability} onChange={(event) => setDraftAvailability(event.target.value)}><option>Active</option><option>Inactive</option></select><ChevronDown className="select-icon" size={16} /></label>}
       {canSwitchProfileType && <button className="profile-update" type="button" onClick={handleProfileUpdate}>Update</button>}
-      <ProfileRequestActions role={role} serviceAmount={serviceAmount} onServiceAmountChange={setServiceAmount} />
+      <ProfileRequestActions role={role} serviceAmount={serviceAmount} onServiceAmountChange={setServiceAmount} serviceOfferStatus={serviceOfferStatus} onServiceOfferStatusChange={setServiceOfferStatus} />
       <details className="service-history">
         <summary><span>Service History</span><span className="service-history-summary"><span>{visibleHistory.length} records</span><CalendarDays size={16} /></span></summary>
         <div className="service-history-content">
@@ -1346,18 +1358,29 @@ function ProfilePanel({ accountType, availability, onAvailabilityChange, onSignO
   </section>
 }
 
-function ProfileRequestActions({ role, serviceAmount, onServiceAmountChange }) {
+function ProfileRequestActions({ role, serviceAmount, onServiceAmountChange, serviceOfferStatus, onServiceOfferStatusChange }) {
   const isProvider = role === 'Service Provider'
   const [decision, setDecision] = useState('')
   const hasServiceAmount = Number(serviceAmount) > 0
   const formattedServiceAmount = hasServiceAmount ? Number(serviceAmount).toLocaleString('en-IN') : ''
-  const waitingForAmount = 'Waiting for the service provider to enter an amount.'
-  const customerPrompt = hasServiceAmount
+  const customerCanReviewOffer = serviceOfferStatus === 'approved' && hasServiceAmount
+  const customerPrompt = customerCanReviewOffer
     ? 'Review the service provider amount and choose Approve or Reject.'
-    : waitingForAmount
-  const decisionPrompt = decision === 'approved' ? 'You approved this service amount.' : 'You rejected this service amount.'
+    : serviceOfferStatus === 'rejected'
+      ? 'The service provider rejected this request.'
+      : 'Waiting for the service provider to approve an amount.'
+  const providerPrompt = serviceOfferStatus === 'approved'
+    ? 'You approved this amount. It is now visible to the customer.'
+    : serviceOfferStatus === 'rejected'
+      ? 'You rejected this service request.'
+      : 'Enter an amount and approve it to send it to the customer.'
+  const decisionPrompt = decision === 'approved'
+    ? 'You approved this service amount.'
+    : decision === 'cancelled'
+      ? 'You cancelled this service.'
+      : 'You rejected this service amount.'
   const providerDisabledReason = 'No service request is currently assigned to this service provider.'
-  const message = isProvider ? 'Enter the service amount for the customer to review.' : decision ? decisionPrompt : customerPrompt
+  const message = isProvider ? providerPrompt : decision ? decisionPrompt : customerPrompt
 
   return <section className="profile-request-actions" aria-label={`${role} service request actions`}>
     <div className="profile-request-heading">
@@ -1366,16 +1389,25 @@ function ProfileRequestActions({ role, serviceAmount, onServiceAmountChange }) {
     </div>
     <p>{message}</p>
     <div className={isProvider ? 'profile-request-buttons provider' : 'profile-request-buttons'}>
-      {isProvider && <button type="button" className="profile-request-call" disabled title={providerDisabledReason}>Accept and Call with Customer</button>}
-      <button type="button" disabled={isProvider || !hasServiceAmount || Boolean(decision)} onClick={() => setDecision('approved')}>Approve</button>
-      <button type="button" className="reject" disabled={isProvider || !hasServiceAmount || Boolean(decision)} onClick={() => setDecision('rejected')}>Reject</button>
+      {isProvider ? <>
+        <button type="button" className="profile-request-accept" disabled title={providerDisabledReason}>Accept</button>
+        <button type="button" className="profile-request-call" disabled title={providerDisabledReason}>Call with Customer</button>
+      </> : <>
+        <button type="button" disabled={!customerCanReviewOffer || Boolean(decision)} onClick={() => setDecision('approved')}>Approve</button>
+        <button type="button" className="reject" disabled={!customerCanReviewOffer || Boolean(decision)} onClick={() => setDecision('rejected')}>Reject</button>
+      </>}
     </div>
     <label className="profile-request-amount">
       <span>Service Amount (INR)</span>
       {isProvider
-        ? <input type="number" min="0" step="1" inputMode="decimal" value={serviceAmount} onChange={(event) => { onServiceAmountChange(event.target.value); setDecision('') }} placeholder="Enter agreed amount" />
-        : <input type="text" value={formattedServiceAmount} readOnly placeholder="Awaiting service provider amount" aria-label="Service Amount (INR), read only" />}
+        ? <input type="number" min="0" step="1" inputMode="decimal" value={serviceAmount} onChange={(event) => { onServiceAmountChange(event.target.value); onServiceOfferStatusChange('pending'); setDecision('') }} placeholder="Enter agreed amount" />
+        : <input type="text" value={customerCanReviewOffer ? formattedServiceAmount : ''} readOnly placeholder={serviceOfferStatus === 'rejected' ? 'Service provider rejected this request' : 'Awaiting provider approval'} aria-label="Service Amount (INR), read only" />}
     </label>
+    {isProvider && <div className="profile-request-buttons provider">
+      <button type="button" disabled={!hasServiceAmount || serviceOfferStatus !== 'pending'} onClick={() => onServiceOfferStatusChange('approved')}>Approve</button>
+      <button type="button" className="reject" disabled={!hasServiceAmount || serviceOfferStatus !== 'pending'} onClick={() => onServiceOfferStatusChange('rejected')}>Reject</button>
+    </div>}
+    {!isProvider && <button type="button" className="profile-request-cancel" disabled={Boolean(decision)} onClick={() => setDecision('cancelled')}>Cancel service</button>}
   </section>
 }
 
@@ -1568,6 +1600,7 @@ function RegistrationModal({ type, submitted, setSubmitted, onSignedIn, onSignOu
           {selectedService === 'Electricians' && <label>Electrician specialist<select required defaultValue=""><option value="" disabled>Select a specialization</option><option>Home Specialist</option><option>Farming Motors Specialist</option><option>Both Specialist</option></select><ChevronDown className="select-icon" size={16} /></label>}
           {selectedService === 'Vehicle & Machinery Service Providers' && <label>Vehicle specialist<select required defaultValue=""><option value="" disabled>Select a specialization</option>{vehicleSpecialists.map((item) => <option key={item.name} value={item.value || item.name} disabled={item.divider}>{item.divider ? item.name : `${item.name} → ${item.description}`}</option>)}</select><ChevronDown className="select-icon" size={16} /></label>}
           {selectedService === 'Driving Service Providers' && <label>Driving specialist<select required defaultValue=""><option value="" disabled>Select a driving service</option>{drivingSpecialists.map((item) => <option key={item.name} value={item.name}>{item.name} → {item.description}</option>)}</select><ChevronDown className="select-icon" size={16} /></label>}
+          {selectedService === 'Loader Service Providers' && <label>Loader service type<select required value={selectedSpecialty} onChange={(event) => setSelectedSpecialty(event.target.value)}><option value="" disabled>Select a loader service</option>{loaderSpecialists.map((item) => <option key={item.name} value={item.name}>{item.name} → {item.description}</option>)}</select><ChevronDown className="select-icon" size={16} /></label>}
           {selectedService === 'Home Service Providers' && <label>Home service type<select required defaultValue=""><option value="" disabled>Select a home service</option>{homeServiceSpecialists.map((item) => <option key={item.name} value={item.name}>{item.name} → {item.description}</option>)}</select><ChevronDown className="select-icon" size={16} /></label>}
           {selectedService === 'Farming Service Providers' && <label>Farming specialist<select required value={selectedSpecialty} onChange={(event) => { setSelectedSpecialty(event.target.value); setSelectedFarmLaborTask(''); setSelectedMultiServices([]) }}><option value="" disabled>Select a specialization</option>{farmingSpecialists.map((item) => <option key={item.name} value={item.value || item.name} disabled={item.divider}>{item.divider ? item.name : item.description ? `${item.name} → ${item.description}` : item.name}</option>)}</select><ChevronDown className="select-icon" size={16} /></label>}
           {selectedService === 'Farming Service Providers' && selectedSpecialty === 'Multi-Select' && <fieldset className="service-multiselect"><legend>Service types</legend>{farmingSpecialists.filter((item) => !item.divider && item.value !== 'Multi-Select').map((item, index) => <label className="service-multiselect-option" key={item.name}><input type="checkbox" checked={selectedMultiServices.includes(item.name)} required={selectedMultiServices.length === 0 && index === 0} onChange={(event) => { const isChecked = event.target.checked; setSelectedMultiServices((current) => isChecked ? [...current, item.name] : current.filter((service) => service !== item.name)); if (item.name === 'Farm Laborers' && !isChecked) setSelectedFarmLaborTask('') }} /><span>{item.name}</span></label>)}</fieldset>}
