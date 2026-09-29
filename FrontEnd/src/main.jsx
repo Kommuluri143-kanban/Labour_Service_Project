@@ -36,6 +36,16 @@ const profilePreviewHistory = [
   { id: 5, service: 'Pump maintenance', customer: 'Meena Devi', date: dateDaysAgo(364), amount: 2100 },
 ]
 
+const activeServiceProviders = [
+  { id: 1, name: 'Suresh Kumar', mobile: '90000 12345', address: 'Atmakur, Nellore', services: 'Electrical repair' },
+  { id: 2, name: 'Ravi Naidu', mobile: '90000 67890', address: 'Marripadu, Nellore', services: 'Plumbing and pipe repairs' },
+]
+
+const approvedCustomerRequests = [
+  { id: 1, customer: 'Lakshmi Reddy', service: 'Electrical repair', provider: 'Suresh Kumar', status: 'In progress' },
+  { id: 2, customer: 'Arjun Reddy', service: 'Plumbing repair', provider: 'Ravi Naidu', status: 'Completed' },
+]
+
 const categories = [
   { name: 'Construction Service Providers', icon: '🏗️', count: '5 -> nearby service providers' },
   { name: 'Driving Service Providers', icon: '🚘', count: '3 -> nearby service providers' },
@@ -1024,6 +1034,39 @@ const adminViewPaths = {
   payments: '/Admin/PaymentStatus',
   'service-providers': '/Admin/ServiceProviders',
 }
+const registeredProfilesKey = 'worknear.registeredProfiles'
+const activeProfileKey = 'worknear.activeProfile'
+
+function normalizeMobileNumber(mobile) {
+  const digits = String(mobile || '').replace(/\D/g, '')
+  if (digits.length === 12 && digits.startsWith('91')) return digits.slice(2)
+  if (digits.length === 11 && digits.startsWith('0')) return digits.slice(1)
+  return digits
+}
+
+function readRegisteredProfiles() {
+  try {
+    const profiles = JSON.parse(window.localStorage.getItem(registeredProfilesKey) || '[]')
+    return Array.isArray(profiles) ? profiles : []
+  } catch {
+    return []
+  }
+}
+
+function readActiveProfile() {
+  try {
+    return JSON.parse(window.localStorage.getItem(activeProfileKey) || 'null')
+  } catch {
+    return null
+  }
+}
+
+function homePathForProfile(profileType) {
+  if (profileType === 'Service Provider') return '/ServiceProviderHome'
+  if (profileType === 'Admin') return '/Home'
+  if (profileType === 'Employer') return '/EmployerHome'
+  return '/CustomerHome'
+}
 
 function getRouteState(pathname = window.location.pathname) {
   const path = pathname.toLowerCase()
@@ -1034,6 +1077,9 @@ function getRouteState(pathname = window.location.pathname) {
   if (path === '/admin/serviceproviders') return { entryScreen: 'app', activeForm: 'admin', submitted: true, adminView: 'service-providers' }
   if (path === '/admin/serviceprovidersmanagement') return { entryScreen: 'app', activeForm: 'admin', submitted: true, adminView: 'providers' }
   if (path === '/admin') return { entryScreen: 'app', activeForm: 'admin', submitted: false, adminView: 'providers' }
+  if (path === '/customerhome' || path === '/customer') return { entryScreen: 'app', activeForm: null, submitted: false, adminView: 'providers', profileAccountType: 'Customer' }
+  if (path === '/serviceproviderhome' || path === '/serviceprovider') return { entryScreen: 'app', activeForm: null, submitted: false, adminView: 'providers', profileAccountType: 'Service Provider' }
+  if (path === '/employerhome' || path === '/employer') return { entryScreen: 'app', activeForm: null, submitted: false, adminView: 'providers', profileAccountType: 'Employer' }
 
   const formRoute = Object.entries(formPaths).find(([, routePath]) => routePath.toLowerCase() === path)
   if (formRoute) return { entryScreen: 'app', activeForm: formRoute[0], submitted: false, adminView: 'providers' }
@@ -1051,21 +1097,28 @@ function getAppCommissionRate(amount) {
 
 function App() {
   const initialRoute = useRef(getRouteState()).current
+  const initialProfile = useRef(readActiveProfile()).current
   const [entryScreen, setEntryScreen] = useState(initialRoute.entryScreen)
   const [activeForm, setActiveForm] = useState(initialRoute.activeForm)
   const [menuOpen, setMenuOpen] = useState(false)
   const [profileOpen, setProfileOpen] = useState(false)
   const [submitted, setSubmitted] = useState(initialRoute.submitted)
-  const [signedIn, setSignedIn] = useState(false)
-  const [profileAccountType, setProfileAccountType] = useState('Service Provider')
+  const [signedIn, setSignedIn] = useState(Boolean(initialProfile))
+  const [userProfile, setUserProfile] = useState(initialProfile)
+  const [profileAccountType, setProfileAccountType] = useState(initialProfile?.profileType || initialRoute.profileAccountType || 'Service Provider')
   const [providerAvailability, setProviderAvailability] = useState('Active')
   const [adminInitialView, setAdminInitialView] = useState(initialRoute.adminView)
+  const canAccessCustomerServices = !signedIn || profileAccountType === 'Customer' || profileAccountType === 'Employer'
+  const canOpenProviderRegistration = !signedIn || profileAccountType === 'Service Provider'
+  const canAccessPaymentExchange = !signedIn || (profileAccountType !== 'Admin' && profileAccountType !== 'Employer')
+  const canViewEmployerDirectories = signedIn && profileAccountType === 'Employer'
 
   const applyRouteState = (routeState) => {
     setEntryScreen(routeState.entryScreen)
     setActiveForm(routeState.activeForm)
     setSubmitted(routeState.submitted)
     setAdminInitialView(routeState.adminView)
+    if (routeState.profileAccountType) setProfileAccountType(routeState.profileAccountType)
     setMenuOpen(false)
     setProfileOpen(false)
   }
@@ -1076,6 +1129,10 @@ function App() {
   }
 
   const openForm = (form) => {
+    if (form === 'customer' && !canAccessCustomerServices) return
+    if (form === 'labour' && !canOpenProviderRegistration) return
+    if (form === 'payment' && !canAccessPaymentExchange) return
+    if (form === 'admin' && signedIn && profileAccountType !== 'Admin') return
     pushPath(formPaths[form] || '/Home')
     setSubmitted(false)
     setActiveForm(form)
@@ -1085,11 +1142,43 @@ function App() {
   }
 
   const closeForm = () => {
-    if (submitted && activeForm === 'labour') setProfileAccountType('Service Provider')
-    if (submitted && activeForm === 'customer') setProfileAccountType('Customer')
-    pushPath('/Home')
+    pushPath(signedIn ? homePathForProfile(profileAccountType) : '/Home')
     setSubmitted(false)
     setActiveForm(null)
+  }
+
+  const completeAuthentication = (authData) => {
+    const enteredProfile = authData.profile
+    let authenticatedProfile = enteredProfile
+    const registeredProfiles = readRegisteredProfiles()
+
+    if (authData.mode === 'signup') {
+      authenticatedProfile = { ...enteredProfile, profileType: enteredProfile.profileType || 'Customer' }
+      const mobileKey = normalizeMobileNumber(authenticatedProfile.mobile)
+      if (mobileKey) {
+        const nextProfiles = registeredProfiles.filter((profile) => normalizeMobileNumber(profile.mobile) !== mobileKey)
+        nextProfiles.push(authenticatedProfile)
+        try { window.localStorage.setItem(registeredProfilesKey, JSON.stringify(nextProfiles)) } catch { /* Keep the active development session usable when storage is unavailable. */ }
+      }
+    } else {
+      const mobileKey = normalizeMobileNumber(enteredProfile.mobile)
+      authenticatedProfile = registeredProfiles.find((profile) => normalizeMobileNumber(profile.mobile) === mobileKey) || {
+        ...enteredProfile,
+        profileType: 'Customer',
+      }
+    }
+
+    try { window.localStorage.setItem(activeProfileKey, JSON.stringify(authenticatedProfile)) } catch { /* Keep the active development session usable when storage is unavailable. */ }
+    setUserProfile(authenticatedProfile)
+    setProfileAccountType(authenticatedProfile.profileType)
+    setSignedIn(true)
+    navigateTo(homePathForProfile(authenticatedProfile.profileType))
+  }
+
+  const clearSession = () => {
+    try { window.localStorage.removeItem(activeProfileKey) } catch { /* Ignore storage failures during sign out. */ }
+    setUserProfile(null)
+    setSignedIn(false)
   }
 
   const handleAdminSuccess = () => {
@@ -1103,12 +1192,12 @@ function App() {
   }
 
   const handleHomeSignOut = () => {
-    setSignedIn(false)
+    clearSession()
     navigateTo('/')
   }
 
   const handleAdminSignOut = () => {
-    setSignedIn(false)
+    clearSession()
     navigateTo('/Home')
   }
 
@@ -1120,7 +1209,12 @@ function App() {
 
   if (entryScreen === 'landing') return <WelcomeScreen onSignIn={() => navigateTo('/SignIn')} onSignUp={() => navigateTo('/SignUp')} />
   if (entryScreen === 'signout') return <SignOutScreen onHome={() => navigateTo('/')} onSignIn={() => navigateTo('/SignIn')} />
-  if (entryScreen === 'signin' || entryScreen === 'signup') return <SignInFlow mode={entryScreen} onBack={() => navigateTo('/')} onSuccess={() => { setSignedIn(true); navigateTo('/Home') }} />
+  if (entryScreen === 'signin' || entryScreen === 'signup') return <SignInFlow mode={entryScreen} onBack={() => navigateTo('/')} onSuccess={completeAuthentication} />
+
+  const canAccessAdmin = !signedIn || profileAccountType === 'Admin'
+  const customerServiceDisabledTitle = signedIn && profileAccountType === 'Service Provider'
+    ? 'Customer service requests are unavailable for Service Provider profiles.'
+    : 'Customer services are unavailable for Admin profiles.'
 
   return (
     <main className="app-shell">
@@ -1134,10 +1228,14 @@ function App() {
         </button>
         <nav className={menuOpen ? 'nav-links open' : 'nav-links'}>
           <a href="#categories" onClick={() => setMenuOpen(false)}>Find services</a>
-          <button className="nav-cta" onClick={() => openForm('labour')}>Join as a service provider</button>
+          <button className="nav-cta" onClick={() => openForm('labour')} disabled={!canOpenProviderRegistration} aria-disabled={!canOpenProviderRegistration} title={!canOpenProviderRegistration ? 'Service provider registration is unavailable for this profile.' : undefined}>Join as a service provider</button>
+          {canViewEmployerDirectories && <>
+            <a className="nav-section-link" href="#active-service-providers" onClick={() => setMenuOpen(false)}>Active Service Providers</a>
+            <a className="nav-section-link" href="#approved-customer-requests" onClick={() => setMenuOpen(false)}>Approved Customer Requests</a>
+          </>}
           <button className="nav-cta contact-cta" onClick={() => openForm('contact')}>Contact Us</button>
           <button className="nav-cta feedback-cta" onClick={() => openForm('feedback')}>Feedback</button>
-          <button className="text-button" onClick={() => openForm('admin')}>Admin</button>
+          {canAccessAdmin && <button className="text-button" onClick={() => openForm('admin')}>Admin</button>}
         </nav>
         <div className="profile-area">
           <button className="profile-trigger" onClick={() => setProfileOpen(!profileOpen)} aria-expanded={profileOpen} aria-controls="profile-panel">
@@ -1146,7 +1244,7 @@ function App() {
             <ChevronDown size={16} className={profileOpen ? 'profile-chevron open' : 'profile-chevron'} />
           </button>
           <button className="profile-signout" onClick={handleHomeSignOut}>Sign out</button>
-          {profileOpen && <ProfilePanel accountType={profileAccountType} availability={providerAvailability} onAvailabilityChange={setProviderAvailability} onSignOut={handleHomeSignOut} onClose={() => setProfileOpen(false)} />}
+          {profileOpen && <ProfilePanel key={profileAccountType} accountType={profileAccountType} profile={userProfile} availability={providerAvailability} onAvailabilityChange={setProviderAvailability} onSignOut={handleHomeSignOut} onClose={() => setProfileOpen(false)} />}
         </div>
       </header>
 
@@ -1155,7 +1253,7 @@ function App() {
           <div className="service-area"><p className="eyebrow">Service area</p><p>SPSR Nellore District, Andhra Pradesh</p></div>
           <div className="section-heading"><div><h2>All services</h2></div></div>
           <div className="category-grid">
-            {categories.map((category) => <button className="category-card" key={category.name} onClick={() => openForm('customer')}><span className="category-icon">{category.icon}</span><span className="category-name">{category.name}</span><span className="category-count">{category.count}</span><ArrowRight className="card-arrow" size={17} /></button>)}
+            {categories.map((category) => <button className="category-card" key={category.name} onClick={() => openForm('customer')} disabled={!canAccessCustomerServices} aria-disabled={!canAccessCustomerServices} title={!canAccessCustomerServices ? customerServiceDisabledTitle : undefined}><span className="category-icon">{category.icon}</span><span className="category-name">{category.name}</span><span className="category-count">{category.count}</span><ArrowRight className="card-arrow" size={17} /></button>)}
           </div>
         </section>
 
@@ -1166,12 +1264,12 @@ function App() {
               <h1>Useful hands,<br /><em>right nearby.</em></h1>
               <p className="hero-description">A simple local board for finding capable help and sharing the work you know best, one practical job at a time.</p>
               <div className="hero-actions">
-                <button className="primary-button" onClick={() => openForm('customer')}>Ask a Service<ArrowRight size={18} /></button>
-                <button className="secondary-button" onClick={() => openForm('labour')}>Service Provider<img className="service-provider-icon" src="/src/Service_Provider_Img.png" alt="" /></button>
+                <button className="primary-button" onClick={() => openForm('customer')} disabled={!canAccessCustomerServices} aria-disabled={!canAccessCustomerServices} title={!canAccessCustomerServices ? customerServiceDisabledTitle : undefined}>Ask a Service<ArrowRight size={18} /></button>
+                <button className="secondary-button" onClick={() => openForm('labour')} disabled={!canOpenProviderRegistration} aria-disabled={!canOpenProviderRegistration} title={!canOpenProviderRegistration ? 'Service provider registration is unavailable for this profile.' : undefined}>Service Provider<img className="service-provider-icon" src="/src/Service_Provider_Img.png" alt="" /></button>
               </div>
               <div className="payment-panel">
                 <p className="eyebrow">Secure settlement</p>
-                <button className="payment-button" onClick={() => openForm('payment')}>Payment Exchange</button>
+                <button className="payment-button" onClick={() => openForm('payment')} disabled={!canAccessPaymentExchange} aria-disabled={!canAccessPaymentExchange} title={!canAccessPaymentExchange ? 'Payment exchange is unavailable for this profile.' : undefined}>Payment Exchange</button>
                 <span>Track customer payment, service provider payout instantly.</span>
               </div>
               <div className="trust-row">
@@ -1187,13 +1285,88 @@ function App() {
             </div>
           </section>
 
+          {canViewEmployerDirectories && <HomeDirectorySections />}
           <footer><span>© 2026 WorkNear</span><span>A small board for useful work</span></footer>
         </div>
       </div>
 
-      {activeForm && <RegistrationModal type={activeForm} submitted={submitted} setSubmitted={setSubmitted} onSignedIn={() => { setSignedIn(true); if (activeForm === 'customer') setProfileAccountType('Customer') }} onSignOut={handleAdminSignOut} onClose={closeForm} initialAdminView={adminInitialView} onAdminSuccess={handleAdminSuccess} onAdminViewChange={handleAdminViewChange} />}
+      {activeForm && !(activeForm === 'customer' && !canAccessCustomerServices) && !(activeForm === 'labour' && !canOpenProviderRegistration) && !(activeForm === 'payment' && !canAccessPaymentExchange) && !(activeForm === 'admin' && !canAccessAdmin) && <RegistrationModal type={activeForm} submitted={submitted} setSubmitted={setSubmitted} onSignedIn={() => { setSignedIn(true); if (!signedIn && activeForm === 'customer') setProfileAccountType('Customer') }} onSignOut={handleAdminSignOut} onClose={closeForm} initialAdminView={adminInitialView} onAdminSuccess={handleAdminSuccess} onAdminViewChange={handleAdminViewChange} />}
     </main>
   )
+}
+
+function HomeDirectorySections() {
+  return <div className="home-directory-sections">
+    <section className="home-directory-section" id="active-service-providers" aria-labelledby="active-service-providers-title">
+      <div className="home-directory-heading">
+        <p className="eyebrow">Ready to help</p>
+        <h2 id="active-service-providers-title">Active Service Providers</h2>
+        <p>Service providers currently available in the local area.</p>
+      </div>
+      <ActiveServiceProvidersTable />
+    </section>
+
+    <section className="home-directory-section" id="approved-customer-requests" aria-labelledby="approved-customer-requests-title">
+      <div className="home-directory-heading">
+        <p className="eyebrow">Approved work</p>
+        <h2 id="approved-customer-requests-title">Approved Customer Requests</h2>
+        <p>Approved requests and the Service Provider assigned to each one.</p>
+      </div>
+      <div className="directory-card-grid">
+        {approvedCustomerRequests.map((request) => <article className="directory-card" key={request.id}>
+          <div className="directory-card-title"><h3>{request.service}</h3><span className="directory-status">{request.status}</span></div>
+          <p>Customer: <strong>{request.customer}</strong></p>
+          <small>Assigned Service Provider: <strong>{request.provider}</strong></small>
+        </article>)}
+      </div>
+    </section>
+  </div>
+}
+
+function ActiveServiceProvidersTable() {
+  const [sort, setSort] = useState({ key: 'name', direction: 'asc' })
+  const [search, setSearch] = useState('')
+  const columns = [
+    { key: 'name', label: 'Service Provider Name' },
+    { key: 'mobile', label: 'Mobile Number' },
+    { key: 'address', label: 'Address' },
+    { key: 'services', label: 'Services Known' },
+  ]
+  const searchText = search.trim().toLocaleLowerCase()
+  const searchDigits = search.replace(/\D/g, '')
+  const filteredProviders = activeServiceProviders.filter((provider) => (
+    provider.name.toLocaleLowerCase().includes(searchText)
+    || provider.mobile.toLocaleLowerCase().includes(searchText)
+    || (searchDigits && provider.mobile.replace(/\D/g, '').includes(searchDigits))
+  ))
+  const sortedProviders = [...filteredProviders].sort((first, second) => {
+    const comparison = first[sort.key].localeCompare(second[sort.key], 'en', { numeric: true, sensitivity: 'base' })
+    return sort.direction === 'asc' ? comparison : -comparison
+  })
+  const toggleSort = (key) => setSort((current) => ({
+    key,
+    direction: current.key === key && current.direction === 'asc' ? 'desc' : 'asc',
+  }))
+
+  return <div className="directory-table-wrap">
+    <div className="provider-search">
+      <label htmlFor="active-provider-search">Search by Service Provider name or mobile number</label>
+      <input id="active-provider-search" type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Enter a name or mobile number" />
+    </div>
+    <table className="directory-table">
+      <thead><tr>{columns.map((column) => <th key={column.key} scope="col" aria-sort={sort.key === column.key ? (sort.direction === 'asc' ? 'ascending' : 'descending') : 'none'}>
+        <button type="button" className="directory-sort-button" onClick={() => toggleSort(column.key)} aria-label={`Sort by ${column.label} ${sort.key === column.key && sort.direction === 'asc' ? 'descending' : 'ascending'}`}>
+          <span>{column.label}</span><span className="directory-sort-indicator" aria-hidden="true">{sort.key === column.key ? (sort.direction === 'asc' ? 'ASC' : 'DESC') : 'SORT'}</span>
+        </button>
+      </th>)}</tr></thead>
+      <tbody>{sortedProviders.length ? sortedProviders.map((provider) => <tr key={provider.id}>
+        <td><strong>{provider.name}</strong></td>
+        <td>{provider.mobile}</td>
+        <td>{provider.address}</td>
+        <td>{provider.services}</td>
+      </tr>) : <tr><td className="provider-search-empty" colSpan={columns.length}>No active service providers match “{search}”.</td></tr>}</tbody>
+    </table>
+  </div>
 }
 
 function WelcomeScreen({ onSignIn, onSignUp }) {
@@ -1218,65 +1391,61 @@ function SignOutScreen({ onHome, onSignIn }) {
 }
 
 function SignInFlow({ mode, onBack, onSuccess }) {
-  const [selectedService, setSelectedService] = useState('')
+  const [fullName, setFullName] = useState('')
   const [selectedDivision, setSelectedDivision] = useState('')
   const [selectedMandal, setSelectedMandal] = useState('')
   const [selectedVillage, setSelectedVillage] = useState('')
-  const [selectedProfileType, setSelectedProfileType] = useState('')
+  const [selectedProfileType, setSelectedProfileType] = useState('Customer')
   const [mobile, setMobile] = useState('')
-  const [captchaAnswer, setCaptchaAnswer] = useState('')
-  const [captchaCode, setCaptchaCode] = useState(() => Math.random().toString(36).slice(2, 7).toUpperCase())
-  const [captchaError, setCaptchaError] = useState('')
   const [otp, setOtp] = useState('')
   const [generatedOtp, setGeneratedOtp] = useState('')
   const [otpError, setOtpError] = useState('')
   const availableMandals = divisionMandals[selectedDivision] || mandals
   const availableVillages = mandalVillages[selectedMandal] || []
 
-  const refreshCaptcha = () => {
-    setCaptchaCode(Math.random().toString(36).slice(2, 7).toUpperCase())
-    setCaptchaAnswer('')
-    setCaptchaError('')
-  }
-
   const handleSubmit = (event) => {
     event.preventDefault()
     if (!generatedOtp) {
-      if (captchaAnswer.trim().toUpperCase() !== captchaCode) {
-        setCaptchaError('CAPTCHA does not match.')
-        return
-      }
       const nextOtp = String(Math.floor(100000 + Math.random() * 900000))
       setGeneratedOtp(nextOtp)
       setOtp('')
       return
     }
-    if (!/^\d{6}$/.test(otp)) {
-      setOtpError('Enter the correct 6-digit OTP.')
+    if (otp !== generatedOtp) {
+      setOtpError('Enter the demo OTP shown above.')
       return
     }
-    onSuccess()
+    onSuccess({
+      mode,
+      profile: {
+        fullName,
+        mobile,
+        division: selectedDivision,
+        mandal: selectedMandal,
+        village: selectedVillage,
+        profileType: mode === 'signup' ? selectedProfileType : undefined,
+      },
+    })
   }
 
   return <main className="signin-screen">
     <section className="signin-panel">
       <h1>{generatedOtp ? 'Verify OTP' : mode === 'signup' ? 'Sign up' : 'Sign in'}</h1>
-      <p className="signin-intro">{generatedOtp ? `Enter the six-digit OTP sent to ${mobile}.` : 'Choose a service to continue to the local work board.'}</p>
+      <p className="signin-intro">{generatedOtp ? `Development OTP for ${mobile || 'this test session'}: ${generatedOtp}` : 'Choose a service to continue to the local work board.'}</p>
       <form onSubmit={handleSubmit}>
         {!generatedOtp && <>
           {mode === 'signup' && <>
-            <label>Full Name<input required type="text" value={selectedService} onChange={(event) => setSelectedService(event.target.value)} placeholder="Enter your full name" /></label>
+            <label>Full Name<input type="text" value={fullName} onChange={(event) => setFullName(event.target.value)} placeholder="Enter your full name" /></label>
           </>}
-          <label>Mobile Number<input required type="tel" value={mobile} onChange={(event) => setMobile(event.target.value)} placeholder="Enter mobile number" /></label>
+          <label>Mobile Number<input type="tel" value={mobile} onChange={(event) => setMobile(event.target.value)} placeholder="Enter mobile number" /></label>
           {mode === 'signup' && <>
-            <label>Division<select required value={selectedDivision} onChange={(event) => { setSelectedDivision(event.target.value); setSelectedMandal(''); setSelectedVillage('') }}><option value="" disabled>Select a division</option>{divisions.map((division) => <option key={division} value={division}>{division}</option>)}</select><ChevronDown className="select-icon" size={16} /></label>
-            <label>Mandal<select required value={selectedMandal} onChange={(event) => { setSelectedMandal(event.target.value); setSelectedVillage('') }}><option value="" disabled>Select a mandal</option>{availableMandals.map((mandal) => <option key={mandal} value={mandal}>{mandal}</option>)}</select><ChevronDown className="select-icon" size={16} /></label>
-            <label>Village / Locality<select required={availableVillages.length > 0} value={selectedVillage} disabled={!selectedMandal || availableVillages.length === 0} onChange={(event) => setSelectedVillage(event.target.value)}><option value="" disabled>{selectedMandal && availableVillages.length === 0 ? 'No village options available' : 'Select a village / locality'}</option>{availableVillages.map((village) => <option key={village} value={village}>{village}</option>)}</select><ChevronDown className="select-icon" size={16} /></label>
-            <label>Profile type<select required value={selectedProfileType} onChange={(event) => setSelectedProfileType(event.target.value)}><option value="" disabled>Select a profile type</option><option>Customer</option><option>Service Provider</option><option>Admin</option><option>Employer</option></select><ChevronDown className="select-icon" size={16} /></label>
+            <label>Division<select value={selectedDivision} onChange={(event) => { setSelectedDivision(event.target.value); setSelectedMandal(''); setSelectedVillage('') }}><option value="">Select a division</option>{divisions.map((division) => <option key={division} value={division}>{division}</option>)}</select><ChevronDown className="select-icon" size={16} /></label>
+            <label>Mandal<select value={selectedMandal} onChange={(event) => { setSelectedMandal(event.target.value); setSelectedVillage('') }}><option value="">Select a mandal</option>{availableMandals.map((mandal) => <option key={mandal} value={mandal}>{mandal}</option>)}</select><ChevronDown className="select-icon" size={16} /></label>
+            <label>Village / Locality<select value={selectedVillage} disabled={!selectedMandal || availableVillages.length === 0} onChange={(event) => setSelectedVillage(event.target.value)}><option value="">{selectedMandal && availableVillages.length === 0 ? 'No village options available' : 'Select a village / locality'}</option>{availableVillages.map((village) => <option key={village} value={village}>{village}</option>)}</select><ChevronDown className="select-icon" size={16} /></label>
+            <label>Profile type<select value={selectedProfileType} onChange={(event) => setSelectedProfileType(event.target.value)}><option>Customer</option><option>Service Provider</option><option>Admin</option><option>Employer</option></select><ChevronDown className="select-icon" size={16} /></label>
           </>}
-          <div className="captcha-field"><div className="captcha-code-row"><strong>{captchaCode}</strong><button className="captcha-refresh" type="button" onClick={refreshCaptcha} aria-label="Refresh CAPTCHA" title="Refresh CAPTCHA"><RefreshCw size={15} /></button></div><input required type="text" value={captchaAnswer} onChange={(event) => { setCaptchaAnswer(event.target.value); setCaptchaError('') }} placeholder="Enter CAPTCHA" aria-label="Enter CAPTCHA" />{captchaError && <small>{captchaError}</small>}</div>
         </>}
-        {generatedOtp && <label>One-time password<input required autoFocus type="text" inputMode="numeric" pattern="[0-9]{6}" maxLength="6" value={otp} onChange={(event) => { setOtp(event.target.value.replace(/\D/g, '')); setOtpError('') }} placeholder="Enter 6-digit OTP" />{otpError && <small className="otp-error">{otpError}</small>}</label>}
+        {generatedOtp && <label>One-time password<input autoFocus type="text" inputMode="numeric" maxLength="6" value={otp} onChange={(event) => { setOtp(event.target.value.replace(/\D/g, '')); setOtpError('') }} placeholder="Enter 6-digit OTP" />{otpError && <small className="otp-error">{otpError}</small>}</label>}
         <button className="primary-button form-submit" type="submit">{generatedOtp ? 'Verify OTP' : 'Continue to OTP'} <ArrowRight size={18} /></button>
         <button className="signin-back" type="button" onClick={onBack}>&lt;- Back</button>
       </form>
@@ -1284,33 +1453,22 @@ function SignInFlow({ mode, onBack, onSuccess }) {
   </main>
 }
 
-function ProfilePanel({ accountType, availability, onAvailabilityChange, onSignOut, onClose }) {
-  const [role, setRole] = useState(accountType)
-  const [draftRole, setDraftRole] = useState(accountType)
-  const canSwitchProfileType = accountType === 'Service Provider'
-  const name = 'Suresh Kumar'
-  const mobile = '90000 12345'
+function ProfilePanel({ accountType, profile, availability, onAvailabilityChange, onSignOut, onClose }) {
+  const role = accountType || 'Customer'
+  const isProvider = role === 'Service Provider'
+  const isCustomer = role === 'Customer'
+  const name = profile?.fullName || (isProvider ? 'Service Provider' : isCustomer ? 'Customer' : role)
+  const mobile = profile?.mobile || 'Mobile number not provided'
+  const serviceArea = [profile?.village, profile?.mandal, profile?.division].filter(Boolean).join(', ') || 'Not provided yet'
   const [serviceAmount, setServiceAmount] = useState('')
   const [serviceOfferStatus, setServiceOfferStatus] = useState('pending')
-  const [draftAvailability, setDraftAvailability] = useState(availability)
   const [image, setImage] = useState(accountType === 'Service Provider' ? '/src/Service_Provider_Img.png' : '/src/Workers.png')
   const [historyStartDate, setHistoryStartDate] = useState(getOneYearAgo)
   const [historyEndDate, setHistoryEndDate] = useState(() => toDateInputValue(new Date()))
-  const fallbackImage = role === 'Service Provider' ? '/src/Service_Provider_Img.png' : '/src/Workers.png'
+  const fallbackImage = isProvider ? '/src/Service_Provider_Img.png' : '/src/Workers.png'
   const visibleHistory = profilePreviewHistory
     .filter((record) => record.date >= historyStartDate && record.date <= historyEndDate)
     .sort((first, second) => second.date.localeCompare(first.date))
-
-  const handleRoleChange = (event) => {
-    const nextRole = event.target.value
-    setDraftRole(nextRole)
-  }
-
-  const handleProfileUpdate = () => {
-    setRole(draftRole)
-    setImage(draftRole === 'Service Provider' ? '/src/Service_Provider_Img.png' : '/src/Workers.png')
-    if (draftRole === 'Service Provider') onAvailabilityChange(draftAvailability)
-  }
 
   const handleImageChange = (event) => {
     const file = event.target.files?.[0]
@@ -1333,11 +1491,10 @@ function ProfilePanel({ accountType, availability, onAvailabilityChange, onSignO
       <div><strong>{name || 'Your name'}</strong><span>{role}</span><small>{mobile || 'Mobile Number'}</small></div>
     </div>
     <div className="profile-fields">
-      {canSwitchProfileType && <label>Profile type<select value={draftRole} onChange={handleRoleChange}><option>Customer</option><option>Service Provider</option></select><ChevronDown className="select-icon" size={16} /></label>}
-      {canSwitchProfileType && draftRole === 'Service Provider' && <label>Request accept status<select value={draftAvailability} onChange={(event) => setDraftAvailability(event.target.value)}><option>Active</option><option>Inactive</option></select><ChevronDown className="select-icon" size={16} /></label>}
-      {canSwitchProfileType && <button className="profile-update" type="button" onClick={handleProfileUpdate}>Update</button>}
-      <ProfileRequestActions role={role} serviceAmount={serviceAmount} onServiceAmountChange={setServiceAmount} serviceOfferStatus={serviceOfferStatus} onServiceOfferStatusChange={setServiceOfferStatus} />
-      <details className="service-history">
+      {(isProvider || isCustomer) && <label>{isProvider ? 'Service area' : 'Service location'}<input type="text" value={serviceArea} readOnly /></label>}
+      {isProvider && <label>Request accept status<select value={availability} onChange={(event) => onAvailabilityChange(event.target.value)}><option>Active</option><option>Inactive</option></select><ChevronDown className="select-icon" size={16} /></label>}
+      {(isProvider || isCustomer) && <ProfileRequestActions role={role} serviceAmount={serviceAmount} onServiceAmountChange={setServiceAmount} serviceOfferStatus={serviceOfferStatus} onServiceOfferStatusChange={setServiceOfferStatus} />}
+      {isProvider && <details className="service-history">
         <summary><span>Service History</span><span className="service-history-summary"><span>{visibleHistory.length} records</span><CalendarDays size={16} /></span></summary>
         <div className="service-history-content">
           <p className="service-history-sample">Sample records</p>
@@ -1352,9 +1509,9 @@ function ProfilePanel({ accountType, availability, onAvailabilityChange, onSignO
             </li>)}
           </ul> : <p className="service-history-empty">No service history for these dates.</p>}
         </div>
-      </details>
+      </details>}
     </div>
-    <div className={role === 'Service Provider' && availability === 'Active' ? 'availability-note active' : 'availability-note'}><span className="status-dot" />{role === 'Service Provider' ? availability === 'Active' ? 'Accepting new service requests' : 'Not accepting service requests' : 'Customer profile ready'}</div>
+    <div className={isProvider && availability === 'Active' ? 'availability-note active' : 'availability-note'}><span className="status-dot" />{isProvider ? availability === 'Active' ? 'Accepting new service requests' : 'Not accepting service requests' : isCustomer ? 'Customer profile ready' : `${role} profile active`}</div>
   </section>
 }
 

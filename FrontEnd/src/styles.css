@@ -495,3 +495,51 @@ footer { max-width: 1180px; border-top-color: var(--line); color: #75858a; }
   .note-bottom { right: -2px; }
   .profile-panel { right: -5px; padding: 17px; }
 }
+
+.nav-cta:disabled, .secondary-button:disabled { cursor: not-allowed; opacity: .5; filter: grayscale(.2); transform: none; }
+.nav-cta:disabled:hover, .secondary-button:disabled:hover { background: var(--teal); border-color: #bfc4bc; transform: none; }
+.category-card:disabled, .primary-button:disabled, .payment-button:disabled { cursor: not-allowed; opacity: .5; }
+.category-card:disabled:hover { border-color: #d6d2c8; background: #f7f5f08c; transform: none; }
+.primary-button:disabled:hover, .payment-button:disabled:hover { transform: none; }
+.nav-links { gap: 4px; font-size: 11px; }
+.nav-links a { padding: 6px 3px; white-space: nowrap; }
+.nav-links .nav-cta { padding: 8px 9px; font-size: 11px; white-space: nowrap; }
+.nav-links .nav-section-link { color: var(--teal); font-size: 10px; }
+.home-directory-sections { max-width: 1220px; margin: 0 auto; padding: 0 32px; }
+.home-directory-section { padding: 35px 0 7px; scroll-margin-top: 22px; }
+.home-directory-heading { margin-bottom: 17px; }
+.home-directory-heading .eyebrow { margin-bottom: 9px; }
+.home-directory-heading h2 { font-size: clamp(25px, 3vw, 34px); line-height: 1.1; }
+.home-directory-heading > p:last-child { margin: 8px 0 0; color: var(--muted); font-size: 12px; }
+.directory-card-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.directory-card { min-width: 0; padding: 17px; border: 1px solid var(--line); border-radius: 6px; background: #fff; }
+.directory-card-title { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.directory-card-title h3 { font-size: 16px; letter-spacing: -.4px; }
+.directory-card > p { margin: 11px 0 5px; color: var(--ink); font-size: 12px; }
+.directory-card > small { color: var(--muted); font-size: 11px; }
+.directory-status { flex: 0 0 auto; padding: 5px 8px; border-radius: 20px; color: var(--teal); background: #e7f1eb; font-size: 10px; font-weight: 700; text-transform: capitalize; }
+.directory-table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 6px; background: #fff; }
+.provider-search { display: grid; gap: 6px; padding: 13px 12px; border-bottom: 1px solid var(--line); background: #fff; }
+.provider-search label { color: var(--muted); font-size: 11px; font-weight: 700; }
+.provider-search input { width: min(100%, 420px); padding: 10px 11px; border: 1px solid #cccfc8; border-radius: 4px; outline: 0; color: var(--ink); background: #fff; font-size: 12px; }
+.provider-search input:focus { border-color: var(--teal); box-shadow: 0 0 0 3px rgba(33,107,104,.11); }
+.provider-search-empty { color: var(--muted) !important; text-align: center; }
+.directory-table { width: 100%; min-width: 640px; border-collapse: collapse; text-align: left; font-size: 12px; }
+.directory-table th { padding: 0; border-bottom: 1px solid var(--line); background: #f8f4ec; }
+.directory-sort-button { width: 100%; min-height: 43px; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 12px; border: 0; color: var(--muted); background: transparent; text-align: left; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; white-space: nowrap; }
+.directory-sort-button:hover, .directory-sort-button:focus-visible { color: var(--teal); background: #edf3ed; }
+.directory-sort-indicator { color: var(--teal); font-size: 15px; }
+.directory-table td { padding: 13px 12px; border-top: 1px solid #eee3d3; color: var(--ink); vertical-align: middle; }
+.directory-table tbody tr:first-child td { border-top: 0; }
+.directory-table td strong { font-size: 12px; }
+@media (max-width: 1000px) and (min-width: 701px) {
+  .nav-links { gap: 2px; font-size: 10px; }
+  .nav-links a { padding: 5px 2px; }
+  .nav-links .nav-cta { padding: 7px 6px; font-size: 10px; }
+  .nav-links .nav-section-link { font-size: 9px; }
+}
+@media (max-width: 700px) {
+  .nav-links a, .nav-links .nav-section-link, .nav-links .nav-cta { min-height: 40px; padding: 11px 12px; font-size: 12px; text-align: left; }
+  .home-directory-sections { padding: 0 20px; }
+  .directory-card-grid { grid-template-columns: 1fr; }
+}
