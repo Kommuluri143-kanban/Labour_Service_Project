@@ -95,6 +95,9 @@ footer { display: flex; justify-content: space-between; max-width: 1220px; margi
 .admin-table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 6px; background: #fff; }
 .admin-table { width: 100%; min-width: 850px; border-collapse: collapse; text-align: left; font-size: 12px; }
 .admin-table th { padding: 11px 12px; color: var(--muted); background: #f8f4ec; font-size: 10px; text-transform: uppercase; letter-spacing: .07em; white-space: nowrap; }
+.admin-sort-button { display: inline-flex; align-items: center; gap: 6px; padding: 0; border: 0; color: inherit; background: transparent; font: inherit; letter-spacing: inherit; text-align: left; text-transform: inherit; white-space: nowrap; cursor: pointer; }
+.admin-sort-button span:last-child { color: var(--accent, #59796a); font-size: 12px; line-height: 1; }
+.admin-sort-button:focus-visible { outline: 2px solid currentColor; outline-offset: 3px; border-radius: 2px; }
 .admin-table td { padding: 13px 12px; border-top: 1px solid #eee3d3; color: var(--ink); vertical-align: middle; }
 .admin-table td strong { font-size: 12px; }
 .admin-table input, .admin-table select { width: 100%; min-width: 105px; padding: 7px 8px; border: 1px solid #cccfc8; border-radius: 3px; color: var(--ink); background: #fff; font-size: 11px; }
