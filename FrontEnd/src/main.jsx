@@ -1,6 +1,6 @@
 import { StrictMode, useEffect, useRef, useState } from 'react'
 import { createRoot } from 'react-dom/client'
-import { ArrowLeft, ArrowRight, CalendarDays, Check, CheckCircle2, ChevronDown, LogOut, Menu, Mic, MicOff, Pencil, QrCode, RefreshCw, Search, ShieldCheck, UserRound, X } from 'lucide-react'
+import { ArrowLeft, ArrowRight, CalendarDays, Check, CheckCircle2, ChevronDown, LogOut, Menu, Mic, MicOff, Pencil, QrCode, RefreshCw, ShieldCheck, UserRound, X } from 'lucide-react'
 import './styles.css'
 
 function toDateInputValue(date) {
@@ -36,14 +36,9 @@ const profilePreviewHistory = [
   { id: 5, service: 'Pump maintenance', customer: 'Meena Devi', date: dateDaysAgo(364), amount: 2100 },
 ]
 
-const activeServiceProviders = [
-  { id: 1, name: 'Suresh Kumar', mobile: '90000 12345', address: 'Atmakur, Nellore', services: 'Electrical repair' },
-  { id: 2, name: 'Ravi Naidu', mobile: '90000 67890', address: 'Marripadu, Nellore', services: 'Plumbing and pipe repairs' },
-]
-
 const approvedCustomerRequests = [
-  { id: 1, customer: 'Lakshmi Reddy', service: 'Electrical repair', provider: 'Suresh Kumar', status: 'In progress' },
-  { id: 2, customer: 'Arjun Reddy', service: 'Plumbing repair', provider: 'Ravi Naidu', status: 'Completed' },
+  { id: 1, customer: 'Lakshmi Reddy', customerMobile: '91234 56789', address: 'Atmakur, Nellore', service: 'Electrical repair', status: 'In progress', provider: 'Suresh Kumar', providerMobile: '90000 12345' },
+  { id: 2, customer: 'Arjun Reddy', customerMobile: '92345 67890', address: 'Marripadu, Nellore', service: 'Plumbing repair', status: 'Completed', provider: 'Ravi Naidu', providerMobile: '90000 67890' },
 ]
 
 const categories = [
@@ -1108,9 +1103,10 @@ function App() {
   const [profileAccountType, setProfileAccountType] = useState(initialProfile?.profileType || initialRoute.profileAccountType || 'Service Provider')
   const [providerAvailability, setProviderAvailability] = useState('Active')
   const [adminInitialView, setAdminInitialView] = useState(initialRoute.adminView)
-  const canAccessCustomerServices = !signedIn || profileAccountType === 'Customer' || profileAccountType === 'Employer'
+  const canAccessCustomerServices = !signedIn || ['Customer', 'Service Provider', 'Employer', 'Admin'].includes(profileAccountType)
   const canOpenProviderRegistration = !signedIn || profileAccountType === 'Service Provider'
-  const canAccessPaymentExchange = !signedIn || (profileAccountType !== 'Admin' && profileAccountType !== 'Employer')
+  const canAccessPaymentExchange = !signedIn || ['Customer', 'Service Provider', 'Employer', 'Admin'].includes(profileAccountType)
+  const canAccessContactFeedback = !signedIn || ['Customer', 'Service Provider', 'Employer', 'Admin'].includes(profileAccountType)
   const canViewEmployerDirectories = signedIn && profileAccountType === 'Employer'
 
   const applyRouteState = (routeState) => {
@@ -1132,6 +1128,7 @@ function App() {
     if (form === 'customer' && !canAccessCustomerServices) return
     if (form === 'labour' && !canOpenProviderRegistration) return
     if (form === 'payment' && !canAccessPaymentExchange) return
+    if ((form === 'contact' || form === 'feedback') && !canAccessContactFeedback) return
     if (form === 'admin' && signedIn && profileAccountType !== 'Admin') return
     pushPath(formPaths[form] || '/Home')
     setSubmitted(false)
@@ -1212,10 +1209,6 @@ function App() {
   if (entryScreen === 'signin' || entryScreen === 'signup') return <SignInFlow mode={entryScreen} onBack={() => navigateTo('/')} onSuccess={completeAuthentication} />
 
   const canAccessAdmin = !signedIn || profileAccountType === 'Admin'
-  const customerServiceDisabledTitle = signedIn && profileAccountType === 'Service Provider'
-    ? 'Customer service requests are unavailable for Service Provider profiles.'
-    : 'Customer services are unavailable for Admin profiles.'
-
   return (
     <main className="app-shell">
       <header className="topbar">
@@ -1230,11 +1223,10 @@ function App() {
           <a href="#categories" onClick={() => setMenuOpen(false)}>Find services</a>
           <button className="nav-cta" onClick={() => openForm('labour')} disabled={!canOpenProviderRegistration} aria-disabled={!canOpenProviderRegistration} title={!canOpenProviderRegistration ? 'Service provider registration is unavailable for this profile.' : undefined}>Join as a service provider</button>
           {canViewEmployerDirectories && <>
-            <a className="nav-section-link" href="#active-service-providers" onClick={() => setMenuOpen(false)}>Active Service Providers</a>
             <a className="nav-section-link" href="#approved-customer-requests" onClick={() => setMenuOpen(false)}>Approved Customer Requests</a>
           </>}
-          <button className="nav-cta contact-cta" onClick={() => openForm('contact')}>Contact Us</button>
-          <button className="nav-cta feedback-cta" onClick={() => openForm('feedback')}>Feedback</button>
+          <button className="nav-cta contact-cta" onClick={() => openForm('contact')} disabled={!canAccessContactFeedback} aria-disabled={!canAccessContactFeedback} title={!canAccessContactFeedback ? 'Contact Us is unavailable for Admin profiles.' : undefined}>Contact Us</button>
+          <button className="nav-cta feedback-cta" onClick={() => openForm('feedback')} disabled={!canAccessContactFeedback} aria-disabled={!canAccessContactFeedback} title={!canAccessContactFeedback ? 'Feedback is unavailable for Admin profiles.' : undefined}>Feedback</button>
           {canAccessAdmin && <button className="text-button" onClick={() => openForm('admin')}>Admin</button>}
         </nav>
         <div className="profile-area">
@@ -1253,7 +1245,7 @@ function App() {
           <div className="service-area"><p className="eyebrow">Service area</p><p>SPSR Nellore District, Andhra Pradesh</p></div>
           <div className="section-heading"><div><h2>All services</h2></div></div>
           <div className="category-grid">
-            {categories.map((category) => <button className="category-card" key={category.name} onClick={() => openForm('customer')} disabled={!canAccessCustomerServices} aria-disabled={!canAccessCustomerServices} title={!canAccessCustomerServices ? customerServiceDisabledTitle : undefined}><span className="category-icon">{category.icon}</span><span className="category-name">{category.name}</span><span className="category-count">{category.count}</span><ArrowRight className="card-arrow" size={17} /></button>)}
+            {categories.map((category) => <button className="category-card" key={category.name} onClick={() => openForm('customer')} disabled={!canAccessCustomerServices} aria-disabled={!canAccessCustomerServices}><span className="category-icon">{category.icon}</span><span className="category-name">{category.name}</span><span className="category-count">{category.count}</span><ArrowRight className="card-arrow" size={17} /></button>)}
           </div>
         </section>
 
@@ -1264,7 +1256,7 @@ function App() {
               <h1>Useful hands,<br /><em>right nearby.</em></h1>
               <p className="hero-description">A simple local board for finding capable help and sharing the work you know best, one practical job at a time.</p>
               <div className="hero-actions">
-                <button className="primary-button" onClick={() => openForm('customer')} disabled={!canAccessCustomerServices} aria-disabled={!canAccessCustomerServices} title={!canAccessCustomerServices ? customerServiceDisabledTitle : undefined}>Ask a Service<ArrowRight size={18} /></button>
+                <button className="primary-button" onClick={() => openForm('customer')} disabled={!canAccessCustomerServices} aria-disabled={!canAccessCustomerServices}>Ask a Service<ArrowRight size={18} /></button>
                 <button className="secondary-button" onClick={() => openForm('labour')} disabled={!canOpenProviderRegistration} aria-disabled={!canOpenProviderRegistration} title={!canOpenProviderRegistration ? 'Service provider registration is unavailable for this profile.' : undefined}>Service Provider<img className="service-provider-icon" src="/src/Service_Provider_Img.png" alt="" /></button>
               </div>
               <div className="payment-panel">
@@ -1290,57 +1282,43 @@ function App() {
         </div>
       </div>
 
-      {activeForm && !(activeForm === 'customer' && !canAccessCustomerServices) && !(activeForm === 'labour' && !canOpenProviderRegistration) && !(activeForm === 'payment' && !canAccessPaymentExchange) && !(activeForm === 'admin' && !canAccessAdmin) && <RegistrationModal type={activeForm} submitted={submitted} setSubmitted={setSubmitted} onSignedIn={() => { setSignedIn(true); if (!signedIn && activeForm === 'customer') setProfileAccountType('Customer') }} onSignOut={handleAdminSignOut} onClose={closeForm} initialAdminView={adminInitialView} onAdminSuccess={handleAdminSuccess} onAdminViewChange={handleAdminViewChange} />}
+      {activeForm && !(activeForm === 'customer' && !canAccessCustomerServices) && !(activeForm === 'labour' && !canOpenProviderRegistration) && !(activeForm === 'payment' && !canAccessPaymentExchange) && !((activeForm === 'contact' || activeForm === 'feedback') && !canAccessContactFeedback) && !(activeForm === 'admin' && !canAccessAdmin) && <RegistrationModal type={activeForm} submitted={submitted} setSubmitted={setSubmitted} onSignedIn={() => { setSignedIn(true); if (!signedIn && activeForm === 'customer') setProfileAccountType('Customer') }} onSignOut={handleAdminSignOut} onClose={closeForm} initialAdminView={adminInitialView} onAdminSuccess={handleAdminSuccess} onAdminViewChange={handleAdminViewChange} />}
     </main>
   )
 }
 
 function HomeDirectorySections() {
   return <div className="home-directory-sections">
-    <section className="home-directory-section" id="active-service-providers" aria-labelledby="active-service-providers-title">
-      <div className="home-directory-heading">
-        <p className="eyebrow">Ready to help</p>
-        <h2 id="active-service-providers-title">Active Service Providers</h2>
-        <p>Service providers currently available in the local area.</p>
-      </div>
-      <ActiveServiceProvidersTable />
-    </section>
-
     <section className="home-directory-section" id="approved-customer-requests" aria-labelledby="approved-customer-requests-title">
       <div className="home-directory-heading">
         <p className="eyebrow">Approved work</p>
         <h2 id="approved-customer-requests-title">Approved Customer Requests</h2>
         <p>Approved requests and the Service Provider assigned to each one.</p>
       </div>
-      <div className="directory-card-grid">
-        {approvedCustomerRequests.map((request) => <article className="directory-card" key={request.id}>
-          <div className="directory-card-title"><h3>{request.service}</h3><span className="directory-status">{request.status}</span></div>
-          <p>Customer: <strong>{request.customer}</strong></p>
-          <small>Assigned Service Provider: <strong>{request.provider}</strong></small>
-        </article>)}
-      </div>
+      <ApprovedCustomerRequestsTable />
     </section>
   </div>
 }
 
-function ActiveServiceProvidersTable() {
-  const [sort, setSort] = useState({ key: 'name', direction: 'asc' })
+function ApprovedCustomerRequestsTable() {
   const [search, setSearch] = useState('')
+  const [sort, setSort] = useState({ key: 'customer', direction: 'asc' })
   const columns = [
-    { key: 'name', label: 'Service Provider Name' },
-    { key: 'mobile', label: 'Mobile Number' },
+    { key: 'customer', label: 'Customer Name' },
+    { key: 'customerMobile', label: 'Customer Mobile Number' },
     { key: 'address', label: 'Address' },
-    { key: 'services', label: 'Services Known' },
+    { key: 'status', label: 'Approved Service Status' },
+    { key: 'provider', label: 'Service Provider Name' },
+    { key: 'providerMobile', label: 'Service Provider Mobile Number' },
   ]
   const searchText = search.trim().toLocaleLowerCase()
   const searchDigits = search.replace(/\D/g, '')
-  const filteredProviders = activeServiceProviders.filter((provider) => (
-    provider.name.toLocaleLowerCase().includes(searchText)
-    || provider.mobile.toLocaleLowerCase().includes(searchText)
-    || (searchDigits && provider.mobile.replace(/\D/g, '').includes(searchDigits))
+  const filteredRequests = approvedCustomerRequests.filter((request) => (
+    request.customer.toLocaleLowerCase().includes(searchText)
+    || (searchDigits && request.customerMobile.replace(/\D/g, '').includes(searchDigits))
   ))
-  const sortedProviders = [...filteredProviders].sort((first, second) => {
-    const comparison = first[sort.key].localeCompare(second[sort.key], 'en', { numeric: true, sensitivity: 'base' })
+  const sortedRequests = [...filteredRequests].sort((first, second) => {
+    const comparison = String(first[sort.key] || '').localeCompare(String(second[sort.key] || ''), 'en', { numeric: true, sensitivity: 'base' })
     return sort.direction === 'asc' ? comparison : -comparison
   })
   const toggleSort = (key) => setSort((current) => ({
@@ -1348,23 +1326,25 @@ function ActiveServiceProvidersTable() {
     direction: current.key === key && current.direction === 'asc' ? 'desc' : 'asc',
   }))
 
-  return <div className="directory-table-wrap">
-    <div className="provider-search">
-      <label htmlFor="active-provider-search">Search by Service Provider name or mobile number</label>
-      <input id="active-provider-search" type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Enter a name or mobile number" />
+  return <div className="approved-requests-table-wrap">
+    <div className="approved-requests-search">
+      <label htmlFor="approved-customer-request-search">Search by Customer Name or Customer Mobile Number</label>
+      <input id="approved-customer-request-search" type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Enter a customer name or mobile number" />
     </div>
-    <table className="directory-table">
+    <table className="approved-requests-table">
       <thead><tr>{columns.map((column) => <th key={column.key} scope="col" aria-sort={sort.key === column.key ? (sort.direction === 'asc' ? 'ascending' : 'descending') : 'none'}>
-        <button type="button" className="directory-sort-button" onClick={() => toggleSort(column.key)} aria-label={`Sort by ${column.label} ${sort.key === column.key && sort.direction === 'asc' ? 'descending' : 'ascending'}`}>
-          <span>{column.label}</span><span className="directory-sort-indicator" aria-hidden="true">{sort.key === column.key ? (sort.direction === 'asc' ? 'ASC' : 'DESC') : 'SORT'}</span>
+        <button type="button" className="approved-requests-sort-button" onClick={() => toggleSort(column.key)} aria-label={`Sort by ${column.label} ${sort.key === column.key && sort.direction === 'asc' ? 'descending' : 'ascending'}`}>
+          <span>{column.label}</span><span className="approved-requests-sort-indicator" aria-hidden="true">{sort.key === column.key ? (sort.direction === 'asc' ? '↑' : '↓') : '↕'}</span>
         </button>
       </th>)}</tr></thead>
-      <tbody>{sortedProviders.length ? sortedProviders.map((provider) => <tr key={provider.id}>
-        <td><strong>{provider.name}</strong></td>
-        <td>{provider.mobile}</td>
-        <td>{provider.address}</td>
-        <td>{provider.services}</td>
-      </tr>) : <tr><td className="provider-search-empty" colSpan={columns.length}>No active service providers match “{search}”.</td></tr>}</tbody>
+      <tbody>{sortedRequests.length ? sortedRequests.map((request) => <tr key={request.id}>
+        <td><strong>{request.customer}</strong></td>
+        <td>{request.customerMobile}</td>
+        <td>{request.address}</td>
+        <td>{request.status}</td>
+        <td>{request.provider}</td>
+        <td>{request.providerMobile}</td>
+      </tr>) : <tr><td className="approved-requests-empty" colSpan={columns.length}>No approved customer requests match “{search}”.</td></tr>}</tbody>
     </table>
   </div>
 }
@@ -1479,7 +1459,7 @@ function ProfilePanel({ accountType, profile, availability, onAvailabilityChange
   }
 
   return <section className="profile-panel" id="profile-panel" aria-label="Profile details">
-    <div className="profile-panel-heading"><div><p className="eyebrow">Your account</p><h2>Profile details</h2></div><div className="profile-panel-actions"><button className="profile-signout-heading" onClick={onSignOut}>Sign out</button><button className="profile-close" onClick={onClose} aria-label="Close profile"><X size={17} /></button></div></div>
+    <div className="profile-panel-heading"><div><p className="eyebrow">Your account</p><h2>Profile details</h2></div><div className="profile-panel-actions"><button className="profile-close" onClick={onClose} aria-label="Close profile"><X size={17} /></button></div></div>
     <div className="profile-preview">
       <div className="profile-avatar-wrap">
         <img src={image || fallbackImage} alt={`${role} profile`} />
@@ -1491,7 +1471,6 @@ function ProfilePanel({ accountType, profile, availability, onAvailabilityChange
       <div><strong>{name || 'Your name'}</strong><span>{role}</span><small>{mobile || 'Mobile Number'}</small></div>
     </div>
     <div className="profile-fields">
-      {(isProvider || isCustomer) && <label>{isProvider ? 'Service area' : 'Service location'}<input type="text" value={serviceArea} readOnly /></label>}
       {isProvider && <label>Request accept status<select value={availability} onChange={(event) => onAvailabilityChange(event.target.value)}><option>Active</option><option>Inactive</option></select><ChevronDown className="select-icon" size={16} /></label>}
       {(isProvider || isCustomer) && <ProfileRequestActions role={role} serviceAmount={serviceAmount} onServiceAmountChange={setServiceAmount} serviceOfferStatus={serviceOfferStatus} onServiceOfferStatusChange={setServiceOfferStatus} />}
       {isProvider && <details className="service-history">
@@ -1561,8 +1540,8 @@ function ProfileRequestActions({ role, serviceAmount, onServiceAmountChange, ser
         : <input type="text" value={customerCanReviewOffer ? formattedServiceAmount : ''} readOnly placeholder={serviceOfferStatus === 'rejected' ? 'Service provider rejected this request' : 'Awaiting provider approval'} aria-label="Service Amount (INR), read only" />}
     </label>
     {isProvider && <div className="profile-request-buttons provider">
-      <button type="button" disabled={!hasServiceAmount || serviceOfferStatus !== 'pending'} onClick={() => onServiceOfferStatusChange('approved')}>Approve</button>
-      <button type="button" className="reject" disabled={!hasServiceAmount || serviceOfferStatus !== 'pending'} onClick={() => onServiceOfferStatusChange('rejected')}>Reject</button>
+      <button type="button" disabled={!hasServiceAmount || serviceOfferStatus !== 'pending'} onClick={() => onServiceOfferStatusChange('approved')}>Service Amount</button>
+      <button type="button" className="reject" disabled={!hasServiceAmount || serviceOfferStatus !== 'pending'} onClick={() => onServiceOfferStatusChange('rejected')}>Reject New Service</button>
     </div>}
     {!isProvider && <button type="button" className="profile-request-cancel" disabled={Boolean(decision)} onClick={() => setDecision('cancelled')}>Cancel service</button>}
   </section>
@@ -1723,7 +1702,7 @@ function RegistrationModal({ type, submitted, setSubmitted, onSignedIn, onSignOu
           <div><span>Provider receives</span><strong>₹{providerReceives.toLocaleString('en-IN')}</strong></div>
           <div><span>Platform fee</span><strong>₹{appCollects.toLocaleString('en-IN')}</strong></div>  
           <div><span>{settlementLabel}</span><strong>₹{settlementAmount.toLocaleString('en-IN')}</strong></div>
-        </div> : isAdmin ? <AdminDashboard initialView={initialAdminView} onViewChange={onAdminViewChange} onSignOut={onSignOut} /> : <p>{isFeedback ? 'Your thoughts help us improve the local work board.' : isContact ? 'We’ve received your message and will get back to you shortly.' : 'We’ve received your details and will be in touch shortly.'}</p>}
+        </div> : isAdmin ? <AdminDashboard initialView={initialAdminView} onViewChange={onAdminViewChange} onSignOut={onSignOut} onHome={onClose} /> : <p>{isFeedback ? 'Your thoughts help us improve the local work board.' : isContact ? 'We’ve received your message and will get back to you shortly.' : 'We’ve received your details and will be in touch shortly.'}</p>}
         {!isAdmin && <button className="primary-button" onClick={onClose}>Back to home <ArrowRight size={18} /></button>}
       </div> : <><p className="eyebrow">{isPayment ? 'Secure transfer' : isAdmin ? adminOtpStep ? 'Mobile verification' : 'Secure access' : isFeedback ? 'Help us improve' : isContact ? 'Get in touch' : isLabour }</p><h2 id="modal-title">{isPayment ? 'Payment Exchange' : isAdmin ? adminOtpStep ? 'Enter your OTP' : 'Admin login' : isFeedback ? 'Tell us what you think' : isContact ? 'How can we help?' : isLabour ? 'Register as a service provider' : 'Tell us what you need'}</h2><p className="modal-intro">{isPayment ? 'Choose the payment flow, method, and commission split for a customer and service provider transaction.' : isAdmin ? adminOtpStep ? 'Enter the one-time password sent to your registered mobile number.' : 'Sign in with your email, password, and CAPTCHA to continue.' : isFeedback ? 'Share a quick rating and note about your experience.' : isContact ? 'Send us a note and our team will respond shortly.' : isLabour ? 'Share a few details and start finding work near you.' : 'We’ll help you connect with a trusted professional nearby.'}</p><form onSubmit={(event) => { event.preventDefault(); if (isAdmin && !adminOtpStep) { if (captchaAnswer.trim().toUpperCase() !== captchaCode) { setCaptchaError('CAPTCHA does not match.'); return } setAdminOtpStep(true); return } if (isAdmin && !/^\d{6}$/.test(adminOtp)) { setOtpError('Enter the 6-digit OTP sent to your mobile.'); return } if (!isLabour && !isContact && !isFeedback && !isPayment) onSignedIn(); if (isAdmin) onAdminSuccess(); setSubmitted(true) }}>
         {isPayment ? <>
@@ -1784,7 +1763,7 @@ function RegistrationModal({ type, submitted, setSubmitted, onSignedIn, onSignOu
 }
 
 
-function AdminDashboard({ initialView = 'providers', onViewChange, onSignOut }) {
+function AdminDashboard({ initialView = 'providers', onViewChange, onSignOut, onHome }) {
   const [adminView, setAdminView] = useState(initialView)
   const [providers, setProviders] = useState([
     { id: 1, name: 'Suresh Kumar', mobile: '90000 12345', address: 'Atmakur, Nellore', service: 'Electricians', customer: 'Lakshmi Reddy', customerMobile: '91234 56789', customerAddress: 'Atmakur, Nellore', serviceStatus: 'In-Progress', paymentStatus: 'Resolved - Payment pending with customer', amount: 2500, status: 'Active', blocked: false, comment: 'Active for new electrical work.', accessAdmin: null },
@@ -1831,7 +1810,7 @@ function AdminDashboard({ initialView = 'providers', onViewChange, onSignOut }) 
   const requestConfirmation = (action, provider, onConfirm) => setConfirmation({ action, provider, onConfirm })
 
   return <div className="admin-dashboard-content">
-    <div className="admin-dashboard-header"><div><h3>{adminView === 'payments' ? 'Payment Status' : adminView === 'service-providers' ? 'Service Providers' : 'Service Providers Management'}</h3></div><div className="admin-dashboard-actions">{adminView !== 'providers' && <button className="admin-dashboard-link" type="button" onClick={() => changeAdminView('providers')}><ArrowLeft size={14} /> Back</button>}<button className="admin-dashboard-link" type="button" onClick={() => changeAdminView('payments')}>Payment Status</button><button className="admin-dashboard-link" type="button" onClick={() => changeAdminView('service-providers')}>Service Providers</button><button className="admin-signout" onClick={onSignOut}><LogOut size={15} /> Sign out</button></div></div>
+    <div className="admin-dashboard-header"><div><h3>{adminView === 'payments' ? 'Payment Status' : adminView === 'service-providers' ? 'Service Providers' : 'Service Providers Management'}</h3></div><div className="admin-dashboard-actions"><button className="admin-dashboard-link" type="button" onClick={() => adminView === 'providers' ? onHome?.() : changeAdminView('providers')} aria-label={adminView === 'providers' ? 'Back to home' : 'Back to Service Providers Management'}><ArrowLeft size={14} /> Back</button><button className="admin-dashboard-link" type="button" onClick={() => changeAdminView('payments')}>Payment Status</button><button className="admin-dashboard-link" type="button" onClick={() => changeAdminView('service-providers')}>Service Providers</button></div></div>
     {adminView === 'payments' ? <AdminPaymentStatus providers={providers} /> : adminView === 'service-providers' ? <AdminServiceProviders providers={providers} /> : <>
     <div className="admin-dashboard-grid">
       <div className="admin-stat"><strong>3</strong><span>Active Service Providers</span></div>
