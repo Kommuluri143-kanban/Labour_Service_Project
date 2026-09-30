@@ -17,11 +17,12 @@ function dateDaysAgo(days) {
   return toDateInputValue(date)
 }
 
-function getOneYearAgo() {
-  const date = new Date()
-  date.setHours(12, 0, 0, 0)
-  date.setFullYear(date.getFullYear() - 1)
-  return toDateInputValue(date)
+function getSixMonthsAgo() {
+  const currentDate = new Date()
+  const targetMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() - 6, 1)
+  const lastDayOfTargetMonth = new Date(targetMonth.getFullYear(), targetMonth.getMonth() + 1, 0).getDate()
+  targetMonth.setDate(Math.min(currentDate.getDate(), lastDayOfTargetMonth))
+  return toDateInputValue(targetMonth)
 }
 
 function formatServiceDate(date) {
@@ -48,6 +49,7 @@ const categories = [
   { name: 'Home Service Providers', icon: '🏠', count: '12 -> nearby service providers' },
   { name: 'Loader Service Providers', icon: '🚜', count: '0 -> nearby service providers' },
   { name: 'Marriage & Other Functions Service Providers', icon: '🎊', count: '12 -> nearby service providers' },
+  { name: 'Transport Service Providers', icon: '🚚', count: '0 -> nearby service providers' },
   { name: 'Vehicle & Machinery Service Providers', icon: '🔧', count: '11 -> nearby service providers' },
 ]
 
@@ -58,6 +60,7 @@ const labourTypes = [
   'Home Service Providers',
   'Loader Service Providers',
   'Marriage & Other Functions Service Providers',
+  'Transport Service Providers',
   'Vehicle & Machinery Service Providers',
 ]
 const marriageFunctionSpecialists = [
@@ -90,9 +93,15 @@ const drivingSpecialists = [
   { name: 'JCB Operator', description: 'Land leveling, digging, farm construction' },
   { name: 'Tractor Operator', description: 'Tractor driving, ploughing, soil preparation' },
 ]
+const transportSpecialists = [
+  { name: 'Auto Service', description: 'Three-wheeler transportation service for short-distance passenger travel and small parcel deliveries within local areas.' },
+  { name: 'Car Service', description: 'Transportation of passengers for personal travel, business trips, airport transfers, point-to-point commuting.' },
+  { name: 'Mini Truck Service', description: 'Suitable for transporting small to medium-sized goods, household items, office equipment, local delivery services.' },
+  { name: 'Van Service', description: 'Transportation of passengers or goods, ideal for group travel, school transportation, staff transportation, tourism.' },
+]
 const loaderSpecialists = [
-  { name: 'Loading & Unloading Providers', description: 'Operating loaders to load soil, sand, cement, gravel, and others.' },
-  { name: 'Crop Bags Loaders', description: 'Calculate and load crop bags onto lorries or other vehicles' },
+  { name: 'Crop Bags Loaders', description: 'Calculate and load crop bags into lorries or other vehicles' },
+  { name: 'Loading & Unloading Providers', description: 'Operating loaders to load soil, sand, cement, gravel  others.' },
 ]
 const farmingSpecialists = [
   { name: 'Dozer Providers', description: 'Shifting soil, sand, or gravel for construction or farming' },
@@ -149,6 +158,7 @@ const specialistsByService = {
   'Home Service Providers': homeServiceSpecialists,
   'Loader Service Providers': loaderSpecialists,
   'Marriage & Other Functions Service Providers': marriageFunctionSpecialists,
+  'Transport Service Providers': transportSpecialists,
   'Vehicle & Machinery Service Providers': vehicleSpecialists,
 }
 
@@ -1027,10 +1037,12 @@ const formPaths = {
 const adminViewPaths = {
   providers: '/Admin/ServiceProvidersManagement',
   payments: '/Admin/PaymentStatus',
+  employers: '/Admin/Employers',
   'service-providers': '/Admin/ServiceProviders',
 }
 const registeredProfilesKey = 'worknear.registeredProfiles'
 const activeProfileKey = 'worknear.activeProfile'
+const resignationRequestsKey = 'worknear.resignationRequests'
 
 function normalizeMobileNumber(mobile) {
   const digits = String(mobile || '').replace(/\D/g, '')
@@ -1046,6 +1058,37 @@ function readRegisteredProfiles() {
   } catch {
     return []
   }
+}
+
+function readResignationRequests() {
+  try {
+    const requests = JSON.parse(window.localStorage.getItem(resignationRequestsKey) || '[]')
+    return Array.isArray(requests) ? requests : []
+  } catch {
+    return []
+  }
+}
+
+function readEmployerProfiles() {
+  const resignationRequests = readResignationRequests().filter((request) => request?.accountType === 'Employer')
+  return readRegisteredProfiles()
+    .filter((profile) => profile?.profileType === 'Employer')
+    .map((profile) => {
+      const profileMobile = normalizeMobileNumber(profile?.mobile)
+      const profileName = String(profile?.fullName || profile?.name || '').trim().toLocaleLowerCase()
+      const hasResigned = resignationRequests.some((request) => {
+        const requestMobile = normalizeMobileNumber(request?.mobile)
+        if (profileMobile && requestMobile) return profileMobile === requestMobile
+        return profileName && profileName === String(request?.fullName || '').trim().toLocaleLowerCase()
+      })
+      return {
+        id: profileMobile || profileName || `${profile?.profileType}-${profile?.division || ''}-${profile?.mandal || ''}`,
+        name: profile?.fullName || profile?.name || 'Employer',
+        mobile: profile?.mobile || '',
+        address: profile?.address || [profile?.village, profile?.mandal, profile?.division].filter(Boolean).join(', ') || 'Not provided yet',
+        status: profile?.status === 'Resigned' || hasResigned ? 'Resigned' : 'Active',
+      }
+    })
 }
 
 function readActiveProfile() {
@@ -1069,6 +1112,7 @@ function getRouteState(pathname = window.location.pathname) {
   if (path === '/signup') return { entryScreen: 'signup', activeForm: null, submitted: false, adminView: 'providers' }
   if (path === '/signout') return { entryScreen: 'signout', activeForm: null, submitted: false, adminView: 'providers' }
   if (path === '/admin/paymentstatus') return { entryScreen: 'app', activeForm: 'admin', submitted: true, adminView: 'payments' }
+  if (path === '/admin/employers') return { entryScreen: 'app', activeForm: 'admin', submitted: true, adminView: 'employers' }
   if (path === '/admin/serviceproviders') return { entryScreen: 'app', activeForm: 'admin', submitted: true, adminView: 'service-providers' }
   if (path === '/admin/serviceprovidersmanagement') return { entryScreen: 'app', activeForm: 'admin', submitted: true, adminView: 'providers' }
   if (path === '/admin') return { entryScreen: 'app', activeForm: 'admin', submitted: false, adminView: 'providers' }
@@ -1097,6 +1141,13 @@ function App() {
   const [activeForm, setActiveForm] = useState(initialRoute.activeForm)
   const [menuOpen, setMenuOpen] = useState(false)
   const [profileOpen, setProfileOpen] = useState(false)
+  const [serviceHistoryOpen, setServiceHistoryOpen] = useState(false)
+  const [resignationDialogOpen, setResignationDialogOpen] = useState(false)
+  const [resignationSubmitted, setResignationSubmitted] = useState(false)
+  const [resignationError, setResignationError] = useState('')
+  const [closeAccountDialogOpen, setCloseAccountDialogOpen] = useState(false)
+  const [accountClosed, setAccountClosed] = useState(false)
+  const [closeAccountError, setCloseAccountError] = useState('')
   const [submitted, setSubmitted] = useState(initialRoute.submitted)
   const [signedIn, setSignedIn] = useState(Boolean(initialProfile))
   const [userProfile, setUserProfile] = useState(initialProfile)
@@ -1108,6 +1159,8 @@ function App() {
   const canAccessPaymentExchange = !signedIn || ['Customer', 'Service Provider', 'Employer', 'Admin'].includes(profileAccountType)
   const canAccessContactFeedback = !signedIn || ['Customer', 'Service Provider', 'Employer', 'Admin'].includes(profileAccountType)
   const canViewEmployerDirectories = signedIn && profileAccountType === 'Employer'
+  const canViewServiceHistory = !signedIn || ['Customer', 'Service Provider', 'Admin', 'Employer'].includes(profileAccountType)
+  const canCloseAccount = signedIn && ['Customer', 'Service Provider'].includes(profileAccountType)
 
   const applyRouteState = (routeState) => {
     setEntryScreen(routeState.entryScreen)
@@ -1136,6 +1189,90 @@ function App() {
     setEntryScreen('app')
     setMenuOpen(false)
     setProfileOpen(false)
+  }
+
+  const openResignationDialog = () => {
+    if (!signedIn || profileAccountType !== 'Employer') return
+    setResignationSubmitted(false)
+    setResignationError('')
+    setResignationDialogOpen(true)
+  }
+
+  const closeResignationDialog = () => {
+    setResignationDialogOpen(false)
+    setResignationSubmitted(false)
+    setResignationError('')
+  }
+
+  const submitResignationRequest = () => {
+    if (!signedIn || profileAccountType !== 'Employer') return
+    let existingRequests = []
+    try {
+      const parsedRequests = JSON.parse(window.localStorage.getItem(resignationRequestsKey) || '[]')
+      existingRequests = Array.isArray(parsedRequests) ? parsedRequests : []
+    } catch {
+      existingRequests = []
+    }
+
+    const request = {
+      id: `resignation-${Date.now()}`,
+      fullName: userProfile?.fullName || '',
+      mobile: userProfile?.mobile || '',
+      accountType: profileAccountType,
+      status: 'Pending review',
+      submittedAt: new Date().toISOString(),
+    }
+    try {
+      window.localStorage.setItem(resignationRequestsKey, JSON.stringify([...existingRequests, request]))
+      setResignationError('')
+      setResignationSubmitted(true)
+    } catch {
+      setResignationError('Unable to submit your request right now. Please try again.')
+    }
+  }
+
+  const openCloseAccountDialog = () => {
+    setAccountClosed(false)
+    setCloseAccountError('')
+    setCloseAccountDialogOpen(true)
+  }
+
+  const closeCloseAccountDialog = () => {
+    const wasClosed = accountClosed
+    setCloseAccountDialogOpen(false)
+    setAccountClosed(false)
+    setCloseAccountError('')
+    if (wasClosed) navigateTo('/')
+  }
+
+  const confirmCloseAccount = () => {
+    if (!canCloseAccount) return
+    let originalRegisteredProfiles = null
+    try {
+      originalRegisteredProfiles = window.localStorage.getItem(registeredProfilesKey)
+      const parsedProfiles = JSON.parse(originalRegisteredProfiles || '[]')
+      const registeredProfiles = Array.isArray(parsedProfiles) ? parsedProfiles : []
+      const mobileKey = normalizeMobileNumber(userProfile?.mobile)
+      const fullName = String(userProfile?.fullName || '').trim().toLocaleLowerCase()
+      const remainingProfiles = registeredProfiles.filter((profile) => {
+        const registeredMobileKey = normalizeMobileNumber(profile.mobile)
+        if (mobileKey && registeredMobileKey) return registeredMobileKey !== mobileKey
+        return !fullName || profile.profileType !== profileAccountType || String(profile.fullName || '').trim().toLocaleLowerCase() !== fullName
+      })
+
+      window.localStorage.setItem(registeredProfilesKey, JSON.stringify(remainingProfiles))
+      window.localStorage.removeItem(activeProfileKey)
+      setUserProfile(null)
+      setSignedIn(false)
+      setProfileOpen(false)
+      setCloseAccountError('')
+      setAccountClosed(true)
+    } catch {
+      if (originalRegisteredProfiles !== null) {
+        try { window.localStorage.setItem(registeredProfilesKey, originalRegisteredProfiles) } catch { /* Keep the account closure failure visible if storage cannot be restored. */ }
+      }
+      setCloseAccountError('Unable to close your account right now. Please try again.')
+    }
   }
 
   const closeForm = () => {
@@ -1222,14 +1359,17 @@ function App() {
         <nav className={menuOpen ? 'nav-links open' : 'nav-links'}>
           <a href="#categories" onClick={() => setMenuOpen(false)}>Find services</a>
           <button className="nav-cta" onClick={() => openForm('labour')} disabled={!canOpenProviderRegistration} aria-disabled={!canOpenProviderRegistration} title={!canOpenProviderRegistration ? 'Service provider registration is unavailable for this profile.' : undefined}>Join as a service provider</button>
+          {canViewServiceHistory && <button className="nav-cta" onClick={() => { setServiceHistoryOpen(true); setMenuOpen(false); setProfileOpen(false) }}>Service history</button>}
           {canViewEmployerDirectories && <>
             <a className="nav-section-link" href="#approved-customer-requests" onClick={() => setMenuOpen(false)}>Approved Customer Requests</a>
           </>}
-          <button className="nav-cta contact-cta" onClick={() => openForm('contact')} disabled={!canAccessContactFeedback} aria-disabled={!canAccessContactFeedback} title={!canAccessContactFeedback ? 'Contact Us is unavailable for Admin profiles.' : undefined}>Contact Us</button>
+          <button className="nav-cta contact-cta" onClick={() => openForm('contact')} disabled={!canAccessContactFeedback} aria-disabled={!canAccessContactFeedback} title={!canAccessContactFeedback ? 'Contact Us is unavailable for Admin profiles.' : undefined}>Contact us</button>
           <button className="nav-cta feedback-cta" onClick={() => openForm('feedback')} disabled={!canAccessContactFeedback} aria-disabled={!canAccessContactFeedback} title={!canAccessContactFeedback ? 'Feedback is unavailable for Admin profiles.' : undefined}>Feedback</button>
           {canAccessAdmin && <button className="text-button" onClick={() => openForm('admin')}>Admin</button>}
         </nav>
         <div className="profile-area">
+          {signedIn && profileAccountType === 'Employer' && <button className="profile-resign" type="button" onClick={openResignationDialog}>Resign</button>}
+          {canCloseAccount && <button className="profile-resign profile-close-account" type="button" onClick={openCloseAccountDialog}>Close Account</button>}
           <button className="profile-trigger" onClick={() => setProfileOpen(!profileOpen)} aria-expanded={profileOpen} aria-controls="profile-panel">
             <span className="profile-trigger-avatar"><UserRound size={17} /></span>
             <span className="profile-trigger-copy"><strong>{signedIn ? 'My profile' : 'Profile'}</strong><small>{signedIn ? 'Signed in' : 'View details'}</small></span>
@@ -1283,6 +1423,9 @@ function App() {
       </div>
 
       {activeForm && !(activeForm === 'customer' && !canAccessCustomerServices) && !(activeForm === 'labour' && !canOpenProviderRegistration) && !(activeForm === 'payment' && !canAccessPaymentExchange) && !((activeForm === 'contact' || activeForm === 'feedback') && !canAccessContactFeedback) && !(activeForm === 'admin' && !canAccessAdmin) && <RegistrationModal type={activeForm} submitted={submitted} setSubmitted={setSubmitted} onSignedIn={() => { setSignedIn(true); if (!signedIn && activeForm === 'customer') setProfileAccountType('Customer') }} onSignOut={handleAdminSignOut} onClose={closeForm} initialAdminView={adminInitialView} onAdminSuccess={handleAdminSuccess} onAdminViewChange={handleAdminViewChange} />}
+      {serviceHistoryOpen && <ServiceHistoryModal accountType={profileAccountType} onClose={() => setServiceHistoryOpen(false)} />}
+      {resignationDialogOpen && <ResignationConfirmationModal accountType={profileAccountType} submitted={resignationSubmitted} error={resignationError} onConfirm={submitResignationRequest} onClose={closeResignationDialog} />}
+      {closeAccountDialogOpen && <CloseAccountConfirmationModal closed={accountClosed} error={closeAccountError} onConfirm={confirmCloseAccount} onClose={closeCloseAccountDialog} />}
     </main>
   )
 }
@@ -1377,14 +1520,44 @@ function SignInFlow({ mode, onBack, onSuccess }) {
   const [selectedVillage, setSelectedVillage] = useState('')
   const [selectedProfileType, setSelectedProfileType] = useState('Customer')
   const [mobile, setMobile] = useState('')
+  const [signupStep, setSignupStep] = useState('profile')
+  const [adminEmail, setAdminEmail] = useState('')
+  const [adminPassword, setAdminPassword] = useState('')
+  const [passwordError, setPasswordError] = useState('')
   const [otp, setOtp] = useState('')
   const [generatedOtp, setGeneratedOtp] = useState('')
   const [otpError, setOtpError] = useState('')
   const availableMandals = divisionMandals[selectedDivision] || mandals
   const availableVillages = mandalVillages[selectedMandal] || []
+  const isAdminEmployerSignup = mode === 'signup' && signupStep !== 'profile'
+  const isAdminEmployerVerification = isAdminEmployerSignup && signupStep === 'verification'
 
   const handleSubmit = (event) => {
     event.preventDefault()
+    if (mode === 'signup' && signupStep === 'credentials') {
+      const passwordIsValid = /^(?=.*[A-Za-z])(?=.*\d)(?=.*[^A-Za-z0-9\s]).{8,16}$/.test(adminPassword)
+      if (!passwordIsValid) {
+        setPasswordError('Use 8–16 characters with at least one letter, one number, and one special character.')
+        return
+      }
+      setPasswordError('')
+      setGeneratedOtp(String(Math.floor(100000 + Math.random() * 900000)))
+      setOtp('')
+      setOtpError('')
+      setSignupStep('verification')
+      return
+    }
+    if (isAdminEmployerVerification) {
+      if (otp !== generatedOtp) {
+        setOtpError('The OTP does not match. Enter the development OTP shown above.')
+        return
+      }
+      onSuccess({
+        mode,
+        profile: { fullName, mobile, division: selectedDivision, mandal: selectedMandal, village: selectedVillage, profileType: selectedProfileType, email: adminEmail },
+      })
+      return
+    }
     if (!generatedOtp) {
       const nextOtp = String(Math.floor(100000 + Math.random() * 900000))
       setGeneratedOtp(nextOtp)
@@ -1408,12 +1581,37 @@ function SignInFlow({ mode, onBack, onSuccess }) {
     })
   }
 
+  const handleBack = () => {
+    if (mode === 'signup' && signupStep === 'verification') {
+      setSignupStep('credentials')
+      setGeneratedOtp('')
+      setOtp('')
+      setOtpError('')
+      return
+    }
+    if (mode === 'signup' && signupStep === 'credentials') {
+      setSignupStep('profile')
+      setPasswordError('')
+      return
+    }
+    if (generatedOtp) {
+      setGeneratedOtp('')
+      setOtp('')
+      setOtpError('')
+      return
+    }
+    onBack()
+  }
+
   return <main className="signin-screen">
     <section className="signin-panel">
-      <h1>{generatedOtp ? 'Verify OTP' : mode === 'signup' ? 'Sign up' : 'Sign in'}</h1>
-      <p className="signin-intro">{generatedOtp ? `Development OTP for ${mobile || 'this test session'}: ${generatedOtp}` : 'Choose a service to continue to the local work board.'}</p>
+      <h1>{isAdminEmployerVerification ? 'OTP Verification' : signupStep === 'credentials' ? 'Sign up' : generatedOtp ? 'Verify OTP' : mode === 'signup' ? 'Sign up' : 'Sign in'}</h1>
+      <p className="signin-intro">{isAdminEmployerVerification ? `Development OTP for ${adminEmail}: ${generatedOtp}` : signupStep === 'credentials' ? 'Create an Admin or Employer account with your email address and password.' : generatedOtp ? `Development OTP for ${mobile || 'this test session'}: ${generatedOtp}` : 'Choose a service to continue to the local work board.'}</p>
       <form onSubmit={handleSubmit}>
-        {!generatedOtp && <>
+        {signupStep === 'credentials' ? <>
+          <label>Email Address<input type="email" autoComplete="email" required value={adminEmail} onChange={(event) => setAdminEmail(event.target.value)} placeholder="Enter your email address" /></label>
+          <label>Password<input type="password" autoComplete="new-password" required minLength={8} maxLength={16} value={adminPassword} onChange={(event) => { setAdminPassword(event.target.value); setPasswordError('') }} placeholder="Create a password" /><small className="password-requirements">8–16 characters, including a letter, a number, and a special character.</small>{passwordError && <small className="otp-error">{passwordError}</small>}</label>
+        </> : !generatedOtp && <>
           {mode === 'signup' && <>
             <label>Full Name<input type="text" value={fullName} onChange={(event) => setFullName(event.target.value)} placeholder="Enter your full name" /></label>
           </>}
@@ -1422,12 +1620,15 @@ function SignInFlow({ mode, onBack, onSuccess }) {
             <label>Division<select value={selectedDivision} onChange={(event) => { setSelectedDivision(event.target.value); setSelectedMandal(''); setSelectedVillage('') }}><option value="">Select a division</option>{divisions.map((division) => <option key={division} value={division}>{division}</option>)}</select><ChevronDown className="select-icon" size={16} /></label>
             <label>Mandal<select value={selectedMandal} onChange={(event) => { setSelectedMandal(event.target.value); setSelectedVillage('') }}><option value="">Select a mandal</option>{availableMandals.map((mandal) => <option key={mandal} value={mandal}>{mandal}</option>)}</select><ChevronDown className="select-icon" size={16} /></label>
             <label>Village / Locality<select value={selectedVillage} disabled={!selectedMandal || availableVillages.length === 0} onChange={(event) => setSelectedVillage(event.target.value)}><option value="">{selectedMandal && availableVillages.length === 0 ? 'No village options available' : 'Select a village / locality'}</option>{availableVillages.map((village) => <option key={village} value={village}>{village}</option>)}</select><ChevronDown className="select-icon" size={16} /></label>
-            <label>Profile type<select value={selectedProfileType} onChange={(event) => setSelectedProfileType(event.target.value)}><option>Customer</option><option>Service Provider</option><option>Admin</option><option>Employer</option></select><ChevronDown className="select-icon" size={16} /></label>
+            <label>Profile Type<select value={selectedProfileType} onChange={(event) => setSelectedProfileType(event.target.value)}><option>Customer</option><option>Service Provider</option><option>Admin</option><option>Employer</option></select><ChevronDown className="select-icon" size={16} /></label>
           </>}
         </>}
-        {generatedOtp && <label>One-time password<input autoFocus type="text" inputMode="numeric" maxLength="6" value={otp} onChange={(event) => { setOtp(event.target.value.replace(/\D/g, '')); setOtpError('') }} placeholder="Enter 6-digit OTP" />{otpError && <small className="otp-error">{otpError}</small>}</label>}
-        <button className="primary-button form-submit" type="submit">{generatedOtp ? 'Verify OTP' : 'Continue to OTP'} <ArrowRight size={18} /></button>
-        <button className="signin-back" type="button" onClick={onBack}>&lt;- Back</button>
+        {generatedOtp && <label>{isAdminEmployerVerification ? 'One-time password' : 'One-time password'}<input autoFocus type="text" inputMode="numeric" pattern="[0-9]{6}" maxLength="6" required value={otp} onChange={(event) => { setOtp(event.target.value.replace(/\D/g, '')); setOtpError('') }} placeholder="Enter 6-digit OTP" />{otpError && <small className="otp-error">{otpError}</small>}</label>}
+        <button className="primary-button form-submit" type="submit" disabled={mode === 'signup' && signupStep === 'profile' && !generatedOtp && ['Admin', 'Employer'].includes(selectedProfileType)}>{generatedOtp ? 'Verify OTP' : 'Continue to OTP'} <ArrowRight size={18} /></button>
+        <div className="signin-footer-actions">
+          <button className="signin-back" type="button" onClick={handleBack}>← Back</button>
+          {mode === 'signup' && signupStep === 'profile' && !generatedOtp && <button className="admin-employer-signup" type="button" disabled={!['Admin', 'Employer'].includes(selectedProfileType)} onClick={() => setSignupStep('credentials')}>Admin or Employer Sign up →</button>}
+        </div>
       </form>
     </section>
   </main>
@@ -1443,12 +1644,7 @@ function ProfilePanel({ accountType, profile, availability, onAvailabilityChange
   const [serviceAmount, setServiceAmount] = useState('')
   const [serviceOfferStatus, setServiceOfferStatus] = useState('pending')
   const [image, setImage] = useState(accountType === 'Service Provider' ? '/src/Service_Provider_Img.png' : '/src/Workers.png')
-  const [historyStartDate, setHistoryStartDate] = useState(getOneYearAgo)
-  const [historyEndDate, setHistoryEndDate] = useState(() => toDateInputValue(new Date()))
   const fallbackImage = isProvider ? '/src/Service_Provider_Img.png' : '/src/Workers.png'
-  const visibleHistory = profilePreviewHistory
-    .filter((record) => record.date >= historyStartDate && record.date <= historyEndDate)
-    .sort((first, second) => second.date.localeCompare(first.date))
 
   const handleImageChange = (event) => {
     const file = event.target.files?.[0]
@@ -1473,25 +1669,87 @@ function ProfilePanel({ accountType, profile, availability, onAvailabilityChange
     <div className="profile-fields">
       {isProvider && <label>Request accept status<select value={availability} onChange={(event) => onAvailabilityChange(event.target.value)}><option>Active</option><option>Inactive</option></select><ChevronDown className="select-icon" size={16} /></label>}
       {(isProvider || isCustomer) && <ProfileRequestActions role={role} serviceAmount={serviceAmount} onServiceAmountChange={setServiceAmount} serviceOfferStatus={serviceOfferStatus} onServiceOfferStatusChange={setServiceOfferStatus} />}
-      {isProvider && <details className="service-history">
-        <summary><span>Service History</span><span className="service-history-summary"><span>{visibleHistory.length} records</span><CalendarDays size={16} /></span></summary>
-        <div className="service-history-content">
-          <p className="service-history-sample">Sample records</p>
-          <div className="service-history-dates">
-            <label>Start date<input type="date" value={historyStartDate} max={historyEndDate} onChange={(event) => setHistoryStartDate(event.target.value)} /></label>
-            <label>End date<input type="date" value={historyEndDate} min={historyStartDate} max={toDateInputValue(new Date())} onChange={(event) => setHistoryEndDate(event.target.value)} /></label>
-          </div>
-          {visibleHistory.length ? <ul className="service-history-list">
-            {visibleHistory.map((record) => <li key={record.id}>
-              <div><strong>{record.service}</strong><span>{record.customer}</span><small>Completed · INR {record.amount.toLocaleString('en-IN')}</small></div>
-              <time dateTime={record.date}>{formatServiceDate(record.date)}</time>
-            </li>)}
-          </ul> : <p className="service-history-empty">No service history for these dates.</p>}
-        </div>
-      </details>}
     </div>
     <div className={isProvider && availability === 'Active' ? 'availability-note active' : 'availability-note'}><span className="status-dot" />{isProvider ? availability === 'Active' ? 'Accepting new service requests' : 'Not accepting service requests' : isCustomer ? 'Customer profile ready' : `${role} profile active`}</div>
   </section>
+}
+
+function ServiceHistoryModal({ accountType, onClose }) {
+  const earliestHistoryDate = getSixMonthsAgo()
+  const latestHistoryDate = toDateInputValue(new Date())
+  const [historyStartDate, setHistoryStartDate] = useState(getSixMonthsAgo)
+  const [historyEndDate, setHistoryEndDate] = useState(() => toDateInputValue(new Date()))
+  const visibleHistory = profilePreviewHistory
+    .filter((record) => record.date >= historyStartDate && record.date <= historyEndDate)
+    .sort((first, second) => second.date.localeCompare(first.date))
+
+  return <div className="modal-backdrop" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
+    <section className="modal service-history-modal" role="dialog" aria-modal="true" aria-labelledby="service-history-title">
+      <button className="close-button" onClick={onClose} aria-label="Close service history"><X size={20} /></button>
+      <div className="service-history-heading">
+        <div><p className="eyebrow">{accountType} profile</p><h2 id="service-history-title">Service History</h2></div>
+        <span className="service-history-summary"><span>{visibleHistory.length} records</span><CalendarDays size={16} /></span>
+      </div>
+      <p className="modal-intro">Review completed services associated with your profile.</p>
+      <div className="service-history-content">
+        <p className="service-history-sample">Sample records</p>
+        <div className="service-history-dates">
+          <label>Start date<input type="date" value={historyStartDate} min={earliestHistoryDate} max={historyEndDate || latestHistoryDate} onChange={(event) => setHistoryStartDate(event.target.value)} /></label>
+          <label>End date<input type="date" value={historyEndDate} min={historyStartDate || earliestHistoryDate} max={latestHistoryDate} onChange={(event) => setHistoryEndDate(event.target.value)} /></label>
+        </div>
+        {visibleHistory.length ? <ul className="service-history-list">
+          {visibleHistory.map((record) => <li key={record.id}>
+            <div><strong>{record.service}</strong><span>{record.customer}</span><small>Completed · INR {record.amount.toLocaleString('en-IN')}</small></div>
+            <time dateTime={record.date}>{formatServiceDate(record.date)}</time>
+          </li>)}
+        </ul> : <p className="service-history-empty">No service history for these dates.</p>}
+      </div>
+    </section>
+  </div>
+}
+
+function ResignationConfirmationModal({ accountType, submitted, error, onConfirm, onClose }) {
+  return <div className="admin-confirm-backdrop" role="presentation">
+    <section className="admin-confirm-dialog resignation-dialog" role={submitted ? 'dialog' : 'alertdialog'} aria-modal="true" aria-labelledby="resignation-dialog-title">
+      {submitted ? <>
+        <p className="eyebrow">Request submitted</p>
+        <h3 id="resignation-dialog-title">Resignation request submitted</h3>
+        <p>Your request has been saved for review.</p>
+        <div className="admin-confirm-actions"><button className="table-action approve" type="button" onClick={onClose}>Close</button></div>
+      </> : <>
+        <p className="eyebrow">Confirm request</p>
+        <h3 id="resignation-dialog-title">Submit resignation request?</h3>
+        <p>This will submit a resignation request for your {accountType} profile.</p>
+        {error && <p className="resignation-error" role="alert">{error}</p>}
+        <div className="admin-confirm-actions">
+          <button className="table-action approve" type="button" onClick={onConfirm}>Confirm</button>
+          <button className="table-action" type="button" onClick={onClose}>Cancel</button>
+        </div>
+      </>}
+    </section>
+  </div>
+}
+
+function CloseAccountConfirmationModal({ closed, error, onConfirm, onClose }) {
+  return <div className="admin-confirm-backdrop" role="presentation">
+    <section className="admin-confirm-dialog close-account-dialog" role={closed ? 'dialog' : 'alertdialog'} aria-modal="true" aria-labelledby="close-account-dialog-title">
+      {closed ? <>
+        <p className="eyebrow">Account closed</p>
+        <h3 id="close-account-dialog-title">Your account is closed</h3>
+        <p>Your profile and saved sign-in session have been removed.</p>
+        <div className="admin-confirm-actions"><button className="table-action approve" type="button" onClick={onClose}>Close</button></div>
+      </> : <>
+        <p className="eyebrow">Permanent action</p>
+        <h3 id="close-account-dialog-title">Close your account?</h3>
+        <p>This permanently closes your account and removes its saved profile. You will be signed out.</p>
+        {error && <p className="resignation-error" role="alert">{error}</p>}
+        <div className="admin-confirm-actions">
+          <button className="table-action block" type="button" onClick={onConfirm}>Confirm</button>
+          <button className="table-action" type="button" onClick={onClose}>Cancel</button>
+        </div>
+      </>}
+    </section>
+  </div>
 }
 
 function ProfileRequestActions({ role, serviceAmount, onServiceAmountChange, serviceOfferStatus, onServiceOfferStatusChange }) {
@@ -1543,7 +1801,7 @@ function ProfileRequestActions({ role, serviceAmount, onServiceAmountChange, ser
       <button type="button" disabled={!hasServiceAmount || serviceOfferStatus !== 'pending'} onClick={() => onServiceOfferStatusChange('approved')}>Service Amount</button>
       <button type="button" className="reject" disabled={!hasServiceAmount || serviceOfferStatus !== 'pending'} onClick={() => onServiceOfferStatusChange('rejected')}>Reject New Service</button>
     </div>}
-    {!isProvider && <button type="button" className="profile-request-cancel" disabled={Boolean(decision)} onClick={() => setDecision('cancelled')}>Cancel service</button>}
+    {!isProvider && <button type="button" className="profile-request-cancel" disabled={Boolean(decision)} onClick={() => setDecision('cancelled')}>Cancel Service</button>}
   </section>
 }
 
@@ -1736,6 +1994,7 @@ function RegistrationModal({ type, submitted, setSubmitted, onSignedIn, onSignOu
           {selectedService === 'Electricians' && <label>Electrician specialist<select required defaultValue=""><option value="" disabled>Select a specialization</option><option>Home Specialist</option><option>Farming Motors Specialist</option><option>Both Specialist</option></select><ChevronDown className="select-icon" size={16} /></label>}
           {selectedService === 'Vehicle & Machinery Service Providers' && <label>Vehicle specialist<select required defaultValue=""><option value="" disabled>Select a specialization</option>{vehicleSpecialists.map((item) => <option key={item.name} value={item.value || item.name} disabled={item.divider}>{item.divider ? item.name : `${item.name} → ${item.description}`}</option>)}</select><ChevronDown className="select-icon" size={16} /></label>}
           {selectedService === 'Driving Service Providers' && <label>Driving specialist<select required defaultValue=""><option value="" disabled>Select a driving service</option>{drivingSpecialists.map((item) => <option key={item.name} value={item.name}>{item.name} → {item.description}</option>)}</select><ChevronDown className="select-icon" size={16} /></label>}
+          {selectedService === 'Transport Service Providers' && <label>Transport service type<select required value={selectedSpecialty} onChange={(event) => setSelectedSpecialty(event.target.value)}><option value="" disabled>Select a transport service</option>{transportSpecialists.map((item) => <option key={item.name} value={item.name}>{item.name} → {item.description}</option>)}</select><ChevronDown className="select-icon" size={16} /></label>}
           {selectedService === 'Loader Service Providers' && <label>Loader service type<select required value={selectedSpecialty} onChange={(event) => setSelectedSpecialty(event.target.value)}><option value="" disabled>Select a loader service</option>{loaderSpecialists.map((item) => <option key={item.name} value={item.name}>{item.name} → {item.description}</option>)}</select><ChevronDown className="select-icon" size={16} /></label>}
           {selectedService === 'Home Service Providers' && <label>Home service type<select required defaultValue=""><option value="" disabled>Select a home service</option>{homeServiceSpecialists.map((item) => <option key={item.name} value={item.name}>{item.name} → {item.description}</option>)}</select><ChevronDown className="select-icon" size={16} /></label>}
           {selectedService === 'Farming Service Providers' && <label>Farming specialist<select required value={selectedSpecialty} onChange={(event) => { setSelectedSpecialty(event.target.value); setSelectedFarmLaborTask(''); setSelectedMultiServices([]) }}><option value="" disabled>Select a specialization</option>{farmingSpecialists.map((item) => <option key={item.name} value={item.value || item.name} disabled={item.divider}>{item.divider ? item.name : item.description ? `${item.name} → ${item.description}` : item.name}</option>)}</select><ChevronDown className="select-icon" size={16} /></label>}
@@ -1763,21 +2022,130 @@ function RegistrationModal({ type, submitted, setSubmitted, onSignedIn, onSignOu
 }
 
 
+function parseAdminApprovalDate(value) {
+  if (!value) return null
+  const parsed = new Date(value)
+  if (!Number.isNaN(parsed.getTime())) return parsed
+
+  const localized = String(value).trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4}),?\s+(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(am|pm)?$/i)
+  if (!localized) return null
+
+  const [, day, month, year, hour, minute, second = '0', period] = localized
+  let hours = Number(hour)
+  if (period?.toLowerCase() === 'pm' && hours < 12) hours += 12
+  if (period?.toLowerCase() === 'am' && hours === 12) hours = 0
+  const date = new Date(Number(year), Number(month) - 1, Number(day), hours, Number(minute), Number(second))
+  return Number.isNaN(date.getTime()) ? null : date
+}
+
+function formatAdminApprovalDateTime(value) {
+  if (!value) return '—'
+  const date = parseAdminApprovalDate(value)
+  if (!date) return String(value)
+  const parts = new Intl.DateTimeFormat('en-US', {
+    day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true,
+  }).formatToParts(date)
+  const formatted = Object.fromEntries(parts.map(({ type, value: partValue }) => [type, partValue]))
+  return `${formatted.day} ${formatted.month} ${formatted.year}, ${formatted.hour}:${formatted.minute} ${formatted.dayPeriod.toUpperCase()}`
+}
+
+function formatAdminDateInputValue(date) {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+function getAdminPaymentDateBounds(today = new Date()) {
+  const monthStart = new Date(today.getFullYear(), today.getMonth() - 6, 1)
+  const lastDayOfTargetMonth = new Date(monthStart.getFullYear(), monthStart.getMonth() + 1, 0).getDate()
+  const sixMonthsAgo = new Date(monthStart.getFullYear(), monthStart.getMonth(), Math.min(today.getDate(), lastDayOfTargetMonth))
+  return { minDate: formatAdminDateInputValue(sixMonthsAgo), maxDate: formatAdminDateInputValue(today) }
+}
+
+function sortAdminTableRows(rows, columns, sort) {
+  const column = columns.find(({ key }) => key === sort.key)
+  if (!column) return rows
+  return [...rows].sort((left, right) => {
+    const leftValue = column.value(left) ?? ''
+    const rightValue = column.value(right) ?? ''
+    let comparison
+    if (column.sortType === 'date') {
+      const leftDate = parseAdminApprovalDate(leftValue)
+      const rightDate = parseAdminApprovalDate(rightValue)
+      if (!leftDate || !rightDate) return !leftDate && !rightDate ? 0 : !leftDate ? 1 : -1
+      comparison = leftDate.getTime() - rightDate.getTime()
+    } else if (column.sortType === 'number') {
+      comparison = Number(leftValue) - Number(rightValue)
+    } else {
+      comparison = String(leftValue).localeCompare(String(rightValue), undefined, { numeric: true, sensitivity: 'base' })
+    }
+    return sort.direction === 'asc' ? comparison : -comparison
+  })
+}
+
+function filterAdminProviderRows(rows, searchValue) {
+  const search = searchValue.trim().toLocaleLowerCase()
+  if (!search) return rows
+  const mobileSearch = search.replace(/\D/g, '')
+  return rows.filter((provider) => {
+    const name = String(provider.name || '').toLocaleLowerCase()
+    const mobile = String(provider.mobile || '').toLocaleLowerCase()
+    const mobileDigits = mobile.replace(/\D/g, '')
+    return name.includes(search) || mobile.includes(search) || Boolean(mobileSearch && mobileDigits.includes(mobileSearch))
+  })
+}
+
+function SortableTableHeader({ columns, sort, onSort }) {
+  return <thead><tr>{columns.map(({ key, label }) => {
+    const isSorted = sort.key === key
+    const direction = sort.direction
+    return <th key={key} scope="col" aria-sort={isSorted ? direction === 'asc' ? 'ascending' : 'descending' : 'none'}>
+      <button className="admin-sort-button" type="button" onClick={() => onSort(key)} title={`Sort ${label} ${isSorted && direction === 'asc' ? 'descending' : 'ascending'}`}>
+        <span>{label}</span><span aria-hidden="true">{isSorted ? direction === 'asc' ? '↑' : '↓' : '↕'}</span>
+      </button>
+    </th>
+  })}</tr></thead>
+}
+
 function AdminDashboard({ initialView = 'providers', onViewChange, onSignOut, onHome }) {
+  const employers = readEmployerProfiles()
   const [adminView, setAdminView] = useState(initialView)
+  const [activeProviderSort, setActiveProviderSort] = useState({ key: 'name', direction: 'asc' })
+  const [accessProviderSort, setAccessProviderSort] = useState({ key: 'name', direction: 'asc' })
+  const [pendingProviderSort, setPendingProviderSort] = useState({ key: 'name', direction: 'asc' })
+  const [activeProviderSearch, setActiveProviderSearch] = useState('')
+  const [accessProviderSearch, setAccessProviderSearch] = useState('')
+  const [pendingProviderSearch, setPendingProviderSearch] = useState('')
   const [providers, setProviders] = useState([
-    { id: 1, name: 'Suresh Kumar', mobile: '90000 12345', address: 'Atmakur, Nellore', service: 'Electricians', customer: 'Lakshmi Reddy', customerMobile: '91234 56789', customerAddress: 'Atmakur, Nellore', serviceStatus: 'In-Progress', paymentStatus: 'Resolved - Payment pending with customer', amount: 2500, status: 'Active', blocked: false, comment: 'Active for new electrical work.', accessAdmin: null },
-    { id: 2, name: 'Ravi Naidu', mobile: '90000 67890', address: 'Marripadu, Nellore', service: 'Plumbers', customer: 'Arjun Reddy', customerMobile: '92345 67890', customerAddress: 'Marripadu, Nellore', serviceStatus: 'Completed', paymentStatus: 'Resolved - Payment done by customer', amount: 1800, status: 'Active', blocked: false, comment: 'Verified provider.', accessAdmin: null },
-    { id: 5, name: 'Kiran Babu', mobile: '90555 11223', address: 'Vinjamur, Nellore', service: 'Construction Service Providers', customer: 'Meena Devi', customerMobile: '93456 78901', customerAddress: 'Vinjamur, Nellore', serviceStatus: 'Completed', paymentStatus: 'Resolved - Payment done by customer', amount: 2250, status: 'Active', blocked: true, comment: 'Temporarily unActive.', accessAdmin: { name: 'WorkNear Admin', mobile: '98765 43210' } },
+    { id: 1, name: 'Suresh Kumar', mobile: '90000 12345', address: 'Atmakur, Nellore', service: 'Electricians', customer: 'Lakshmi Reddy', customerMobile: '91234 56789', customerAddress: 'Atmakur, Nellore', serviceStatus: 'In-Progress', paymentStatus: 'Resolved - Payment pending with customer', paymentDate: null, amount: 2500, status: 'Active', blocked: false, comment: 'Active for new electrical work.', accessAdmin: null },
+    { id: 2, name: 'Ravi Naidu', mobile: '90000 67890', address: 'Marripadu, Nellore', service: 'Plumbers', customer: 'Arjun Reddy', customerMobile: '92345 67890', customerAddress: 'Marripadu, Nellore', serviceStatus: 'Completed', paymentStatus: 'Resolved - Payment done by customer', paymentDate: '2026-09-29T10:30:00+05:30', amount: 1800, status: 'Active', blocked: false, comment: 'Verified provider.', accessAdmin: null },
+    { id: 5, name: 'Kiran Babu', mobile: '90555 11223', address: 'Vinjamur, Nellore', service: 'Construction Service Providers', customer: 'Meena Devi', customerMobile: '93456 78901', customerAddress: 'Vinjamur, Nellore', serviceStatus: 'Completed', paymentStatus: 'Resolved - Payment done by customer', paymentDate: '2026-09-28T14:15:00+05:30', amount: 2250, status: 'Active', blocked: true, comment: 'Temporarily unActive.', accessAdmin: { name: 'WorkNear Admin', mobile: '98765 43210' } },
   ])
   const [pendingProviders, setPendingProviders] = useState([
-    { id: 3, name: 'Mohan Rao', mobile: '90123 45678', address: 'Vinjamur, Nellore', service: 'Electricians', workPhoto: '/src/Workers.png', status: 'Inactive', approved: false, approval: null },
-    { id: 4, name: 'Anitha Devi', mobile: '90876 54321', address: 'Atmakur, Nellore', service: 'Painters', workPhoto: '/src/Service_Provider_Img.png', status: 'Inactive', approved: false, approval: null },
+    { id: 3, name: 'Mohan Rao', mobile: '90123 45678', address: 'Vinjamur, Nellore', service: 'Electricians', workPhoto: '/src/Workers.png', status: 'Inactive', approved: false, approval: null, requestDate: '2026-09-29T10:30:00+05:30' },
+    { id: 4, name: 'Anitha Devi', mobile: '90876 54321', address: 'Atmakur, Nellore', service: 'Painters', workPhoto: '/src/Service_Provider_Img.png', status: 'Inactive', approved: false, approval: null, requestDate: '2026-09-28T14:15:00+05:30' },
   ])
   const [editingId, setEditingId] = useState(null)
   const [editingAccessId, setEditingAccessId] = useState(null)
   const [confirmation, setConfirmation] = useState(null)
   const [adminDetails] = useState({ name: 'WorkNear Admin', mobile: '98765 43210', email: 'admin@worknear.in' })
+
+  const activeProviderColumns = [
+    { key: 'name', label: 'Service Provider Name', value: (provider) => provider.name || '', render: (provider) => <strong>{provider.name}</strong> },
+    { key: 'mobile', label: 'Mobile Number', value: (provider) => provider.mobile || '', render: (provider) => provider.mobile },
+    { key: 'address', label: 'Address', value: (provider) => provider.address || '', render: (provider) => provider.address },
+    { key: 'service', label: 'Services Knows', value: (provider) => provider.service || 'Service Provider', render: (provider) => provider.service || 'Service Provider' },
+    { key: 'status', label: 'Profile Status', value: (provider) => provider.status || '', render: (provider) => <span className="table-status complete">{provider.status}</span> },
+    { key: 'adminName', label: 'Approved Admin Name', value: (provider) => provider.approval?.admin || provider.accessAdmin?.name || 'WorkNear Admin', render: (provider) => provider.approval?.admin || provider.accessAdmin?.name || 'WorkNear Admin' },
+    { key: 'adminMobile', label: 'Admin Mobile Number', value: (provider) => provider.approval?.mobile || provider.accessAdmin?.mobile || '98765 43210', render: (provider) => provider.approval?.mobile || provider.accessAdmin?.mobile || '98765 43210' },
+    { key: 'approvedAt', label: 'Approved Date & Time', value: (provider) => provider.approval?.date || '', sortType: 'date', render: (provider) => formatAdminApprovalDateTime(provider.approval?.date) },
+  ]
+  const sortedActiveProviders = sortAdminTableRows(filterAdminProviderRows(providers, activeProviderSearch), activeProviderColumns, activeProviderSort)
+  const sortActiveProvidersBy = (key) => setActiveProviderSort((current) => ({
+    key,
+    direction: current.key === key && current.direction === 'asc' ? 'desc' : 'asc',
+  }))
 
   useEffect(() => {
     setAdminView(initialView)
@@ -1793,9 +2161,9 @@ function AdminDashboard({ initialView = 'providers', onViewChange, onSignOut, on
   }
 
   const approveProvider = (provider) => {
-    const approval = { admin: adminDetails.name, mobile: adminDetails.mobile, email: adminDetails.email, date: new Date().toLocaleString('en-IN') }
+    const approval = { admin: adminDetails.name, mobile: adminDetails.mobile, email: adminDetails.email, date: new Date().toISOString() }
     setPendingProviders((current) => current.filter((item) => item.id !== provider.id))
-    setProviders((current) => [...current, { ...provider, status: 'Active', approved: true, approval, customer: 'Pending', customerMobile: 'Pending', customerAddress: 'Pending', serviceStatus: 'Not Started', paymentStatus: 'Resolved - Payment pending with customer', amount: 0, blocked: false, comment: 'Approved provider.', accessAdmin: null }])
+    setProviders((current) => [...current, { ...provider, status: 'Active', approved: true, approval, customer: 'Pending', customerMobile: 'Pending', customerAddress: 'Pending', serviceStatus: 'Not Started', paymentStatus: 'Resolved - Payment pending with customer', paymentDate: null, amount: 0, blocked: false, comment: 'Approved provider.', accessAdmin: null }])
   }
 
   const updateAccessProvider = (id, field, value) => {
@@ -1804,27 +2172,82 @@ function AdminDashboard({ initialView = 'providers', onViewChange, onSignOut, on
 
   const toggleProviderAccess = (provider) => {
     updateAccessProvider(provider.id, 'blocked', !provider.blocked)
-    updateAccessProvider(provider.id, 'accessAdmin', { name: adminDetails.name, mobile: adminDetails.mobile })
+    updateAccessProvider(provider.id, 'accessAdmin', { name: adminDetails.name, mobile: adminDetails.mobile, date: new Date().toISOString() })
   }
 
   const requestConfirmation = (action, provider, onConfirm) => setConfirmation({ action, provider, onConfirm })
 
+  const accessProviderColumns = [
+    { key: 'name', label: 'Service Provider Name', value: (provider) => provider.name || '', render: (provider) => <strong>{provider.name}</strong> },
+    { key: 'mobile', label: 'Mobile Number', value: (provider) => provider.mobile || '', render: (provider) => provider.mobile },
+    { key: 'address', label: 'Address', value: (provider) => provider.address || '', render: (provider) => provider.address },
+    { key: 'service', label: 'Services Knows', value: (provider) => provider.service || 'Service Provider', render: (provider) => provider.service || 'Service Provider' },
+    { key: 'status', label: 'Profile Status', value: (provider) => provider.blocked ? 'Blocked' : provider.status || '', render: (provider) => <span className={provider.blocked ? 'table-status blocked' : 'table-status complete'}>{provider.blocked ? 'Blocked' : provider.status}</span> },
+    { key: 'accessAction', label: 'Block / Unblock', value: (provider) => provider.blocked ? 'Unblock' : 'Block', render: (provider) => <button className={provider.blocked ? 'table-action approve' : 'table-action block'} onClick={() => requestConfirmation(provider.blocked ? 'Unblock' : 'Block', provider, () => toggleProviderAccess(provider))}>{provider.blocked ? 'Unblock' : 'Block'}</button> },
+    { key: 'comment', label: 'Comment', value: (provider) => provider.comment || '', render: (provider) => editingAccessId === provider.id ? <input value={provider.comment} onChange={(event) => updateAccessProvider(provider.id, 'comment', event.target.value)} aria-label={`Comment for ${provider.name}`} /> : provider.comment },
+    { key: 'edit', label: 'Edit', value: (provider) => provider.name || '', render: (provider) => editingAccessId === provider.id ? <button className="table-action" onClick={() => setEditingAccessId(null)}>Save</button> : <button className="table-icon-action" onClick={() => setEditingAccessId(provider.id)} title="Edit provider comment" aria-label={`Edit ${provider.name}`}><Pencil size={14} /></button> },
+    { key: 'adminName', label: 'Admin Name', value: (provider) => provider.accessAdmin?.name || 'Pending', render: (provider) => provider.accessAdmin?.name || 'Pending' },
+    { key: 'adminMobile', label: 'Admin Mobile Number', value: (provider) => provider.accessAdmin?.mobile || 'Pending', render: (provider) => provider.accessAdmin?.mobile || 'Pending' },
+    { key: 'accessAt', label: 'Blocked & Unblocked Date & Time', value: (provider) => provider.accessAdmin?.date || '', sortType: 'date', render: (provider) => formatAdminApprovalDateTime(provider.accessAdmin?.date) },
+  ]
+  const sortedAccessProviders = sortAdminTableRows(filterAdminProviderRows(providers, accessProviderSearch), accessProviderColumns, accessProviderSort)
+  const sortAccessProvidersBy = (key) => setAccessProviderSort((current) => ({
+    key,
+    direction: current.key === key && current.direction === 'asc' ? 'desc' : 'asc',
+  }))
+
+  const pendingProviderColumns = [
+    { key: 'name', label: 'Service Provider Name', value: (provider) => provider.name || '', render: (provider) => editingId === provider.id ? <input value={provider.name} onChange={(event) => updateProvider(provider.id, 'name', event.target.value)} /> : <strong>{provider.name}</strong> },
+    { key: 'mobile', label: 'Mobile Number', value: (provider) => provider.mobile || '', render: (provider) => editingId === provider.id ? <input value={provider.mobile} onChange={(event) => updateProvider(provider.id, 'mobile', event.target.value)} /> : provider.mobile },
+    { key: 'address', label: 'Address', value: (provider) => provider.address || '', render: (provider) => editingId === provider.id ? <input value={provider.address} onChange={(event) => updateProvider(provider.id, 'address', event.target.value)} /> : provider.address },
+    { key: 'service', label: 'Services Knows', value: (provider) => provider.service || '', render: (provider) => editingId === provider.id ? <select value={provider.service} onChange={(event) => updateProvider(provider.id, 'service', event.target.value)}>{labourTypes.map((service) => <option key={service}>{service}</option>)}</select> : provider.service },
+    { key: 'workPhoto', label: 'Work Images', value: (provider) => provider.workPhoto || '', render: (provider) => <img className="work-photo" src={provider.workPhoto} alt={`${provider.name} completed work`} /> },
+    { key: 'status', label: 'Profile Status', value: (provider) => provider.status || '', render: (provider) => <span className="table-status progress">{provider.status}</span> },
+    { key: 'adminAction', label: 'Admin Action', value: (provider) => provider.name || '', render: (provider) => <div className="approval-actions">{editingId === provider.id ? <button className="table-action" onClick={() => setEditingId(null)}>Save</button> : <button className="table-icon-action" onClick={() => setEditingId(provider.id)} title="Edit provider" aria-label={`Edit ${provider.name}`}><Pencil size={14} /></button>}<button className="table-action approve" onClick={() => requestConfirmation('Approve', provider, () => approveProvider(provider))}>Approve</button></div> },
+    { key: 'adminName', label: 'Admin Name', value: (provider) => provider.approval?.admin || 'Pending', render: (provider) => provider.approval?.admin || 'Pending' },
+    { key: 'adminMobile', label: 'Admin Mobile Number', value: (provider) => provider.approval?.mobile || 'Pending', render: (provider) => provider.approval?.mobile || 'Pending' },
+    { key: 'requestDate', label: 'Approval Request Date & Time', value: (provider) => provider.requestDate || '', sortType: 'date', render: (provider) => formatAdminApprovalDateTime(provider.requestDate) },
+  ]
+  const sortedPendingProviders = sortAdminTableRows(filterAdminProviderRows(pendingProviders, pendingProviderSearch), pendingProviderColumns, pendingProviderSort)
+  const sortPendingProvidersBy = (key) => setPendingProviderSort((current) => ({
+    key,
+    direction: current.key === key && current.direction === 'asc' ? 'desc' : 'asc',
+  }))
+
   return <div className="admin-dashboard-content">
-    <div className="admin-dashboard-header"><div><h3>{adminView === 'payments' ? 'Payment Status' : adminView === 'service-providers' ? 'Service Providers' : 'Service Providers Management'}</h3></div><div className="admin-dashboard-actions"><button className="admin-dashboard-link" type="button" onClick={() => adminView === 'providers' ? onHome?.() : changeAdminView('providers')} aria-label={adminView === 'providers' ? 'Back to home' : 'Back to Service Providers Management'}><ArrowLeft size={14} /> Back</button><button className="admin-dashboard-link" type="button" onClick={() => changeAdminView('payments')}>Payment Status</button><button className="admin-dashboard-link" type="button" onClick={() => changeAdminView('service-providers')}>Service Providers</button></div></div>
-    {adminView === 'payments' ? <AdminPaymentStatus providers={providers} /> : adminView === 'service-providers' ? <AdminServiceProviders providers={providers} /> : <>
+    <div className="admin-dashboard-header"><div><h3>{adminView === 'payments' ? 'Payment Status' : adminView === 'employers' ? 'Employers' : adminView === 'service-providers' ? 'Customers' : 'Service Providers Management'}</h3></div><div className="admin-dashboard-actions"><button className="admin-dashboard-link" type="button" onClick={() => adminView === 'providers' ? onHome?.() : changeAdminView('providers')} aria-label={adminView === 'providers' ? 'Back to home' : 'Back to Service Providers Management'}><ArrowLeft size={14} /> Back</button><button className="admin-dashboard-link" type="button" onClick={() => changeAdminView('payments')}>Payment Status</button><button className="admin-dashboard-link" type="button" onClick={() => changeAdminView('employers')}>Employers</button><button className="admin-dashboard-link" type="button" onClick={() => changeAdminView('service-providers')}>Customers</button></div></div>
+    {adminView === 'payments' ? <AdminPaymentStatus providers={providers} /> : adminView === 'employers' ? <AdminEmployers employers={employers} /> : adminView === 'service-providers' ? <AdminServiceProviders providers={providers} /> : <>
     <div className="admin-dashboard-grid">
       <div className="admin-stat"><strong>3</strong><span>Active Service Providers</span></div>
       <div className="admin-stat"><strong>1</strong><span>Inactive Service Provider</span></div>
       <div className="admin-stat"><strong>2</strong><span>Blocked Service Providers</span></div>
     </div>
     <AdminTableSection title="Active Service Providers" description="Monitor approved service providers profiles.">
-      <div className="admin-table-wrap"><table className="admin-table" id="service-providers"><thead><tr><th>Service Provider Name</th><th>Mobile Number</th><th>Address</th><th>Services Knows</th><th>Profile Status</th><th>Approved Admin Name</th><th>Admin Mobile Number</th></tr></thead><tbody>{providers.map((provider) => <tr key={provider.id}><td><strong>{provider.name}</strong></td><td>{provider.mobile}</td><td>{provider.address}</td><td>{provider.service || 'Service Provider'}</td><td><span className="table-status complete">{provider.status}</span></td><td>{provider.approval?.admin || provider.accessAdmin?.name || 'WorkNear Admin'}</td><td>{provider.approval?.mobile || provider.accessAdmin?.mobile || '98765 43210'}</td></tr>)}</tbody></table></div>
+      <div className="admin-table-search"><label><span>Search</span><input type="search" value={activeProviderSearch} onChange={(event) => setActiveProviderSearch(event.target.value)} placeholder="Name or mobile number" aria-label="Search Active Service Providers by name or mobile number" /></label></div>
+      <div className="admin-table-wrap">
+        <table className="admin-table" id="service-providers">
+          <SortableTableHeader columns={activeProviderColumns} sort={activeProviderSort} onSort={sortActiveProvidersBy} />
+          <tbody>{sortedActiveProviders.length ? sortedActiveProviders.map((provider) => <tr key={provider.id}>{activeProviderColumns.map(({ key, render }) => <td key={`${provider.id}-${key}`}>{render(provider)}</td>)}</tr>) : <tr><td className="admin-table-empty" colSpan={activeProviderColumns.length}>No service providers match your search.</td></tr>}</tbody>
+        </table>
+      </div>
     </AdminTableSection>
     <AdminTableSection title="Service Providers Access" description="Block or unblock service providers and record Admin comments.">
-      <div className="admin-table-wrap"><table className="admin-table access-table"><thead><tr><th>Service Provider Name</th><th>Mobile Number</th><th>Address</th><th>Services Knows</th><th>Profile Status</th><th>Block / Unblock</th><th>Comment</th><th>Edit</th><th>Admin Name</th><th>Admin Mobile Number</th></tr></thead><tbody>{providers.map((provider) => <tr key={provider.id}><td><strong>{provider.name}</strong></td><td>{provider.mobile}</td><td>{provider.address}</td><td>{provider.service || 'Service Provider'}</td><td><span className={provider.blocked ? 'table-status blocked' : 'table-status complete'}>{provider.blocked ? 'Blocked' : provider.status}</span></td><td><button className={provider.blocked ? 'table-action approve' : 'table-action block'} onClick={() => requestConfirmation(provider.blocked ? 'Unblock' : 'Block', provider, () => toggleProviderAccess(provider))}>{provider.blocked ? 'Unblock' : 'Block'}</button></td><td>{editingAccessId === provider.id ? <input value={provider.comment} onChange={(event) => updateAccessProvider(provider.id, 'comment', event.target.value)} aria-label={`Comment for ${provider.name}`} /> : provider.comment}</td><td>{editingAccessId === provider.id ? <button className="table-action" onClick={() => setEditingAccessId(null)}>Save</button> : <button className="table-icon-action" onClick={() => setEditingAccessId(provider.id)} title="Edit provider comment" aria-label={`Edit ${provider.name}`}><Pencil size={14} /></button>}</td><td>{provider.accessAdmin?.name || 'Pending'}</td><td>{provider.accessAdmin?.mobile || 'Pending'}</td></tr>)}</tbody></table></div>
+      <div className="admin-table-search"><label><span>Search</span><input type="search" value={accessProviderSearch} onChange={(event) => setAccessProviderSearch(event.target.value)} placeholder="Name or mobile number" aria-label="Search Service Providers Access by name or mobile number" /></label></div>
+      <div className="admin-table-wrap">
+        <table className="admin-table access-table">
+          <SortableTableHeader columns={accessProviderColumns} sort={accessProviderSort} onSort={sortAccessProvidersBy} />
+          <tbody>{sortedAccessProviders.length ? sortedAccessProviders.map((provider) => <tr key={provider.id}>{accessProviderColumns.map(({ key, render }) => <td key={`${provider.id}-${key}`}>{render(provider)}</td>)}</tr>) : <tr><td className="admin-table-empty" colSpan={accessProviderColumns.length}>No service providers match your search.</td></tr>}</tbody>
+        </table>
+      </div>
     </AdminTableSection>
     <AdminTableSection eyebrow="Admin Review Required" title="Newly Registered Service Providers" description="Review service providers details and approve new profiles.">
-      <div className="admin-table-wrap"><table className="admin-table approval-table"><thead><tr><th>Service Provider Name</th><th>Mobile Number</th><th>Address</th><th>Services Knows</th><th>Work Images</th><th>Profile Status</th><th>Admin Action</th><th>Admin Name</th><th>Admin Mobile Number</th></tr></thead><tbody>{pendingProviders.map((provider) => <tr key={provider.id}><td>{editingId === provider.id ? <input value={provider.name} onChange={(event) => updateProvider(provider.id, 'name', event.target.value)} /> : <strong>{provider.name}</strong>}</td><td>{editingId === provider.id ? <input value={provider.mobile} onChange={(event) => updateProvider(provider.id, 'mobile', event.target.value)} /> : provider.mobile}</td><td>{editingId === provider.id ? <input value={provider.address} onChange={(event) => updateProvider(provider.id, 'address', event.target.value)} /> : provider.address}</td><td>{editingId === provider.id ? <select value={provider.service} onChange={(event) => updateProvider(provider.id, 'service', event.target.value)}>{labourTypes.map((service) => <option key={service}>{service}</option>)}</select> : provider.service}</td><td><img className="work-photo" src={provider.workPhoto} alt={`${provider.name} completed work`} /></td><td><span className="table-status progress">{provider.status}</span></td><td><div className="approval-actions">{editingId === provider.id ? <button className="table-action" onClick={() => setEditingId(null)}>Save</button> : <button className="table-icon-action" onClick={() => setEditingId(provider.id)} title="Edit provider" aria-label={`Edit ${provider.name}`}><Pencil size={14} /></button>}<button className="table-action approve" onClick={() => requestConfirmation('Approve', provider, () => approveProvider(provider))}>Approve</button></div></td><td>{provider.approval?.admin || 'Pending'}</td><td>{provider.approval?.mobile || 'Pending'}</td></tr>)}</tbody></table></div>
+      <div className="admin-table-search"><label><span>Search</span><input type="search" value={pendingProviderSearch} onChange={(event) => setPendingProviderSearch(event.target.value)} placeholder="Name or mobile number" aria-label="Search Newly Registered Service Providers by name or mobile number" /></label></div>
+      <div className="admin-table-wrap">
+        <table className="admin-table approval-table">
+          <SortableTableHeader columns={pendingProviderColumns} sort={pendingProviderSort} onSort={sortPendingProvidersBy} />
+          <tbody>{sortedPendingProviders.length ? sortedPendingProviders.map((provider) => <tr key={provider.id}>{pendingProviderColumns.map(({ key, render }) => <td key={`${provider.id}-${key}`}>{render(provider)}</td>)}</tr>) : <tr><td className="admin-table-empty" colSpan={pendingProviderColumns.length}>No service providers match your search.</td></tr>}</tbody>
+        </table>
+      </div>
     </AdminTableSection>
     </>}
     {confirmation && <div className="admin-confirm-backdrop" role="presentation"><section className="admin-confirm-dialog" role="alertdialog" aria-modal="true" aria-labelledby="confirm-title"><p className="eyebrow">Confirm action</p><h3 id="confirm-title">{confirmation.action} provider?</h3><p>{confirmation.action} {confirmation.provider.name} will update their provider access status.</p><div className="admin-confirm-actions"><button className="table-action" onClick={() => setConfirmation(null)}>Cancel</button><button className="table-action approve" onClick={() => { confirmation.onConfirm(); setConfirmation(null) }}>Confirm</button></div></section></div>}
@@ -1832,14 +2255,36 @@ function AdminDashboard({ initialView = 'providers', onViewChange, onSignOut, on
 }
 
 function AdminServiceProviders({ providers }) {
-  return <section className="admin-service-providers-page" aria-label="Service providers">
-    <AdminTableSection description="Service providers profiles and their uploaded scan codes.">
-      <div className="admin-table-wrap"><table className="admin-table service-provider-list-table"><thead><tr><th>Service Provider Name</th><th>Mobile Number</th><th>Address</th><th>Service Provider Uploaded (Scan Code)</th></tr></thead><tbody>{providers.map((provider) => <tr key={provider.id}><td><strong>{provider.name}</strong></td><td>{provider.mobile}</td><td>{provider.address}</td><td><ScanCodeStatus uploaded={provider.scanCodeUploaded !== false} /></td></tr>)}</tbody></table></div>
+  const [search, setSearch] = useState('')
+  const filteredCustomers = filterAdminProviderRows(providers, search)
+
+  return <div>
+    <AdminTableSection description="Customer names and contact details.">
+      <div className="admin-table-search"><label><span>Search</span><input type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Customer name or mobile number" aria-label="Search customer records by customer name or mobile number" /></label></div>
+      <div className="admin-table-wrap"><table className="admin-table service-provider-list-table"><thead><tr><th>Customer Name</th><th>Mobile Number</th><th>Address</th></tr></thead><tbody>{filteredCustomers.length ? filteredCustomers.map((provider) => <tr key={provider.id}><td><strong>{provider.name}</strong></td><td>{provider.mobile}</td><td>{provider.address}</td></tr>) : <tr><td className="admin-table-empty" colSpan={3}>No customer records match your search.</td></tr>}</tbody></table></div>
     </AdminTableSection>
-    <AdminTableSection title="Platform" description="Platform account and uploaded scan code.">
-      <div className="admin-table-wrap"><table className="admin-table platform-list-table"><thead><tr><th>Platform Name</th><th>Platform Uploaded (Scan Code)</th></tr></thead><tbody><tr><td><strong>WorkNear</strong></td><td><ScanCodeStatus uploaded /></td></tr></tbody></table></div>
-    </AdminTableSection>
+  </div>
+}
+
+function AdminEmployers({ employers }) {
+  return <section className="admin-employers-page" aria-label="Employers">
+    <p className="admin-payment-intro">Registered employer profiles and account status.</p>
+    <EmployerProfilesTable employers={employers} />
   </section>
+}
+
+function EmployerProfilesTable({ employers }) {
+  return <div className="admin-table-wrap">
+    <table className="admin-table employer-profiles-table">
+      <thead><tr><th>Employer Name</th><th>Mobile Number</th><th>Address</th><th>Status</th></tr></thead>
+      <tbody>{employers.length ? employers.map((employer) => <tr key={employer.id}>
+        <td><strong>{employer.name}</strong></td>
+        <td>{employer.mobile}</td>
+        <td>{employer.address}</td>
+        <td><span className={employer.status === 'Resigned' ? 'table-status blocked' : 'table-status complete'}>{employer.status}</span></td>
+      </tr>) : <tr><td className="admin-table-empty" colSpan={4}>No employer profiles found.</td></tr>}</tbody>
+    </table>
+  </div>
 }
 
 function ScanCodeStatus({ uploaded }) {
@@ -1847,7 +2292,61 @@ function ScanCodeStatus({ uploaded }) {
 }
 
 function AdminPaymentStatus({ providers }) {
-  return <section className="admin-payment-page" aria-label="Payment status"><p className="admin-payment-intro">Track resolved customer payments and pending customer payments.</p><div className="admin-table-wrap"><table className="admin-table payment-status-table"><thead><tr><th>Service Provider Name</th><th>Mobile Number</th><th>Service Address</th><th>Customer Name</th><th>Customer Mobile Number</th><th>Customer Address</th><th>Payment Status</th><th>Customer Pays</th><th>Service Provider Receives</th><th>Platform Fee</th></tr></thead><tbody>{providers.map((provider) => { const isPendingWithCustomer = provider.paymentStatus.toLowerCase().includes('pending with customer'); const customerPays = isPendingWithCustomer ? 0 : provider.amount; const platformFee = isPendingWithCustomer ? 0 : provider.amount * getAppCommissionRate(provider.amount) / 100; const providerReceives = isPendingWithCustomer ? 0 : provider.amount - platformFee; return <tr key={provider.id}><td><strong>{provider.name}</strong></td><td>{provider.mobile}</td><td>{provider.address}</td><td>{provider.customer}</td><td>{provider.customerMobile}</td><td>{provider.customerAddress}</td><td><span className={provider.paymentStatus.includes('done') ? 'table-status complete' : 'table-status progress'}>{provider.paymentStatus}</span></td><td>₹{customerPays.toLocaleString('en-IN')}</td><td>₹{providerReceives.toLocaleString('en-IN')}</td><td>₹{platformFee.toLocaleString('en-IN')}</td></tr> })}</tbody></table></div></section>
+  const [paymentSort, setPaymentSort] = useState({ key: 'providerName', direction: 'asc' })
+  const [fromPaymentDate, setFromPaymentDate] = useState('')
+  const [toPaymentDate, setToPaymentDate] = useState('')
+  const { minDate, maxDate } = getAdminPaymentDateBounds()
+  const hasDateFilter = Boolean(fromPaymentDate || toPaymentDate)
+  const invalidDateRange = Boolean(fromPaymentDate && toPaymentDate && fromPaymentDate > toPaymentDate)
+  const getPaymentAmounts = (provider) => {
+    const amount = Number(provider.amount) || 0
+    const isPendingWithCustomer = String(provider.paymentStatus || '').toLowerCase().includes('pending with customer')
+    const customerPays = isPendingWithCustomer ? 0 : amount
+    const platformFee = isPendingWithCustomer ? 0 : amount * getAppCommissionRate(amount) / 100
+    return { customerPays, providerReceives: customerPays - platformFee, platformFee }
+  }
+  const columns = [
+    { key: 'providerName', label: 'Service Provider Name', value: (provider) => provider.name || '', render: (provider) => <strong>{provider.name}</strong> },
+    { key: 'providerMobile', label: 'Mobile Number', value: (provider) => provider.mobile || '', render: (provider) => provider.mobile },
+    { key: 'serviceAddress', label: 'Service Address', value: (provider) => provider.address || '', render: (provider) => provider.address },
+    { key: 'customerName', label: 'Customer Name', value: (provider) => provider.customer || '', render: (provider) => provider.customer },
+    { key: 'customerMobile', label: 'Customer Mobile Number', value: (provider) => provider.customerMobile || '', render: (provider) => provider.customerMobile },
+    { key: 'customerAddress', label: 'Customer Address', value: (provider) => provider.customerAddress || '', render: (provider) => provider.customerAddress },
+    { key: 'paymentStatus', label: 'Payment Status', value: (provider) => provider.paymentStatus || '', render: (provider) => <span className={String(provider.paymentStatus).includes('done') ? 'table-status complete' : 'table-status progress'}>{provider.paymentStatus}</span> },
+    { key: 'paymentDate', label: 'Payment Date & Time', value: (provider) => provider.paymentDate || '', sortType: 'date', render: (provider) => formatAdminApprovalDateTime(provider.paymentDate) },
+    { key: 'customerPays', label: 'Customer Pays', value: (provider) => getPaymentAmounts(provider).customerPays, sortType: 'number', render: (provider) => `₹${getPaymentAmounts(provider).customerPays.toLocaleString('en-IN')}` },
+    { key: 'providerReceives', label: 'Service Provider Receives', value: (provider) => getPaymentAmounts(provider).providerReceives, sortType: 'number', render: (provider) => `₹${getPaymentAmounts(provider).providerReceives.toLocaleString('en-IN')}` },
+    { key: 'platformFee', label: 'Platform Fee', value: (provider) => getPaymentAmounts(provider).platformFee, sortType: 'number', render: (provider) => `₹${getPaymentAmounts(provider).platformFee.toLocaleString('en-IN')}` },
+  ]
+  const filteredProviders = providers.filter((provider) => {
+    const paymentDate = parseAdminApprovalDate(provider.paymentDate)
+    if (!paymentDate) return !hasDateFilter
+    const paymentDay = formatAdminDateInputValue(paymentDate)
+    if (paymentDay < minDate || paymentDay > maxDate) return false
+    return !invalidDateRange && (!fromPaymentDate || paymentDay >= fromPaymentDate) && (!toPaymentDate || paymentDay <= toPaymentDate)
+  })
+  const sortedProviders = sortAdminTableRows(filteredProviders, columns, paymentSort)
+  const sortByColumn = (key) => setPaymentSort((current) => ({
+    key,
+    direction: current.key === key && current.direction === 'asc' ? 'desc' : 'asc',
+  }))
+
+  return <section className="admin-payment-page" aria-label="Payment status">
+    <p className="admin-payment-intro">Track resolved customer payments and pending customer payments.</p>
+    <div className="admin-payment-filters" aria-label="Search payments by date">
+      <label><span>From date</span><input type="date" value={fromPaymentDate} min={minDate} max={maxDate} onChange={(event) => setFromPaymentDate(event.target.value)} aria-label="Payment date from" /></label>
+      <label><span>To date</span><input type="date" value={toPaymentDate} min={minDate} max={maxDate} onChange={(event) => setToPaymentDate(event.target.value)} aria-label="Payment date to" /></label>
+      <p>Choose dates within the last six months.</p>
+      {hasDateFilter && <button className="admin-payment-clear" type="button" onClick={() => { setFromPaymentDate(''); setToPaymentDate('') }}>Clear dates</button>}
+    </div>
+    {invalidDateRange && <p className="admin-payment-range-error" role="alert">From date must be on or before To date.</p>}
+    <div className="admin-table-wrap">
+      <table className="admin-table payment-status-table">
+        <SortableTableHeader columns={columns} sort={paymentSort} onSort={sortByColumn} />
+        <tbody>{sortedProviders.length ? sortedProviders.map((provider) => <tr key={provider.id}>{columns.map(({ key, render }) => <td key={`${provider.id}-${key}`}>{render(provider)}</td>)}</tr>) : <tr><td className="admin-table-empty" colSpan={columns.length}>No payment records match the selected date range.</td></tr>}</tbody>
+      </table>
+    </div>
+  </section>
 }
 
 function AdminTableSection({ eyebrow, title, description, children }) {
