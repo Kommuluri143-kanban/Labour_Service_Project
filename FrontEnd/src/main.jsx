@@ -29,6 +29,29 @@ function formatServiceDate(date) {
   return new Intl.DateTimeFormat('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(`${date}T12:00:00`))
 }
 
+function playRequestAlertTone() {
+  const AudioContextClass = window.AudioContext || window.webkitAudioContext
+  if (!AudioContextClass) return
+  let audioContext
+  try { audioContext = new AudioContextClass() } catch { return }
+  const startAt = audioContext.currentTime
+  ;[0, 0.3, 0.6].forEach((offset, index) => {
+    const oscillator = audioContext.createOscillator()
+    const gain = audioContext.createGain()
+    const toneStart = startAt + offset
+    oscillator.type = 'sine'
+    oscillator.frequency.value = 880
+    gain.gain.setValueAtTime(0.0001, toneStart)
+    gain.gain.exponentialRampToValueAtTime(0.12, toneStart + 0.025)
+    gain.gain.exponentialRampToValueAtTime(0.0001, toneStart + 0.18)
+    oscillator.connect(gain)
+    gain.connect(audioContext.destination)
+    oscillator.start(toneStart)
+    oscillator.stop(toneStart + 0.19)
+    if (index === 2) oscillator.onended = () => audioContext.close()
+  })
+}
+
 const profilePreviewHistory = [
   { id: 1, service: 'Electrical repair', customer: 'Lakshmi Reddy', date: dateDaysAgo(16), amount: 2500 },
   { id: 2, service: 'Water pump wiring', customer: 'Ravi Naidu', date: dateDaysAgo(82), amount: 1800 },
@@ -1153,6 +1176,7 @@ function App() {
   const [userProfile, setUserProfile] = useState(initialProfile)
   const [profileAccountType, setProfileAccountType] = useState(initialProfile?.profileType || initialRoute.profileAccountType || 'Service Provider')
   const [providerAvailability, setProviderAvailability] = useState('Active')
+  const [acceptedServiceProvider, setAcceptedServiceProvider] = useState(null)
   const [adminInitialView, setAdminInitialView] = useState(initialRoute.adminView)
   const canAccessCustomerServices = !signedIn || ['Customer', 'Service Provider', 'Employer', 'Admin'].includes(profileAccountType)
   const canOpenProviderRegistration = !signedIn || profileAccountType === 'Service Provider'
@@ -1161,6 +1185,9 @@ function App() {
   const canViewEmployerDirectories = signedIn && profileAccountType === 'Employer'
   const canViewServiceHistory = !signedIn || ['Customer', 'Service Provider', 'Admin', 'Employer'].includes(profileAccountType)
   const canCloseAccount = signedIn && ['Customer', 'Service Provider'].includes(profileAccountType)
+  const showProfilePanel = profileOpen
+    || (signedIn && profileAccountType === 'Service Provider' && Boolean(userProfile?.incomingServiceRequest))
+    || (signedIn && profileAccountType === 'Customer' && Boolean(acceptedServiceProvider || userProfile?.acceptedServiceProvider))
 
   const applyRouteState = (routeState) => {
     setEntryScreen(routeState.entryScreen)
@@ -1184,6 +1211,7 @@ function App() {
     if ((form === 'contact' || form === 'feedback') && !canAccessContactFeedback) return
     if (form === 'admin' && signedIn && profileAccountType !== 'Admin') return
     pushPath(formPaths[form] || '/Home')
+    if (form === 'customer') setAcceptedServiceProvider(null)
     setSubmitted(false)
     setActiveForm(form)
     setEntryScreen('app')
@@ -1376,7 +1404,7 @@ function App() {
             <ChevronDown size={16} className={profileOpen ? 'profile-chevron open' : 'profile-chevron'} />
           </button>
           <button className="profile-signout" onClick={handleHomeSignOut}>Sign out</button>
-          {profileOpen && <ProfilePanel key={profileAccountType} accountType={profileAccountType} profile={userProfile} availability={providerAvailability} onAvailabilityChange={setProviderAvailability} onSignOut={handleHomeSignOut} onClose={() => setProfileOpen(false)} />}
+          {showProfilePanel && <ProfilePanel key={profileAccountType} accountType={profileAccountType} profile={userProfile} availability={providerAvailability} onAvailabilityChange={setProviderAvailability} onSignOut={handleHomeSignOut} onClose={() => setProfileOpen(false)} incomingServiceRequest={userProfile?.incomingServiceRequest} acceptedServiceProvider={profileAccountType === 'Customer' ? acceptedServiceProvider || userProfile?.acceptedServiceProvider : null} onAcceptServiceRequest={() => { setAcceptedServiceProvider({ name: userProfile?.fullName || 'Service Provider', address: userProfile?.address || [userProfile?.village, userProfile?.mandal, userProfile?.division].filter(Boolean).join(', ') || 'Address not provided' }); setUserProfile((current) => current ? { ...current, incomingServiceRequest: null } : current) }} onCancelServiceRequest={() => setUserProfile((current) => current ? { ...current, incomingServiceRequest: null } : current)} onCloseAcceptedServiceRequest={() => { setAcceptedServiceProvider(null); setUserProfile((current) => current ? { ...current, acceptedServiceProvider: null } : current) }} />}
         </div>
       </header>
 
@@ -1422,7 +1450,7 @@ function App() {
         </div>
       </div>
 
-      {activeForm && !(activeForm === 'customer' && !canAccessCustomerServices) && !(activeForm === 'labour' && !canOpenProviderRegistration) && !(activeForm === 'payment' && !canAccessPaymentExchange) && !((activeForm === 'contact' || activeForm === 'feedback') && !canAccessContactFeedback) && !(activeForm === 'admin' && !canAccessAdmin) && <RegistrationModal type={activeForm} submitted={submitted} setSubmitted={setSubmitted} onSignedIn={() => { setSignedIn(true); if (!signedIn && activeForm === 'customer') setProfileAccountType('Customer') }} onSignOut={handleAdminSignOut} onClose={closeForm} initialAdminView={adminInitialView} onAdminSuccess={handleAdminSuccess} onAdminViewChange={handleAdminViewChange} />}
+      {activeForm && !(activeForm === 'customer' && !canAccessCustomerServices) && !(activeForm === 'labour' && !canOpenProviderRegistration) && !(activeForm === 'payment' && !canAccessPaymentExchange) && !((activeForm === 'contact' || activeForm === 'feedback') && !canAccessContactFeedback) && !(activeForm === 'admin' && !canAccessAdmin) && <RegistrationModal type={activeForm} submitted={submitted} setSubmitted={setSubmitted} requesterProfile={userProfile} onSignedIn={() => { setSignedIn(true); if (!signedIn && activeForm === 'customer') setProfileAccountType('Customer') }} onSignOut={handleAdminSignOut} onClose={closeForm} initialAdminView={adminInitialView} onAdminSuccess={handleAdminSuccess} onAdminViewChange={handleAdminViewChange} />}
       {serviceHistoryOpen && <ServiceHistoryModal accountType={profileAccountType} onClose={() => setServiceHistoryOpen(false)} />}
       {resignationDialogOpen && <ResignationConfirmationModal accountType={profileAccountType} submitted={resignationSubmitted} error={resignationError} onConfirm={submitResignationRequest} onClose={closeResignationDialog} />}
       {closeAccountDialogOpen && <CloseAccountConfirmationModal closed={accountClosed} error={closeAccountError} onConfirm={confirmCloseAccount} onClose={closeCloseAccountDialog} />}
@@ -1634,7 +1662,7 @@ function SignInFlow({ mode, onBack, onSuccess }) {
   </main>
 }
 
-function ProfilePanel({ accountType, profile, availability, onAvailabilityChange, onSignOut, onClose }) {
+function ProfilePanel({ accountType, profile, availability, onAvailabilityChange, onSignOut, onClose, incomingServiceRequest = null, acceptedServiceProvider = null, onAcceptServiceRequest, onCancelServiceRequest, onCloseAcceptedServiceRequest }) {
   const role = accountType || 'Customer'
   const isProvider = role === 'Service Provider'
   const isCustomer = role === 'Customer'
@@ -1643,8 +1671,18 @@ function ProfilePanel({ accountType, profile, availability, onAvailabilityChange
   const serviceArea = [profile?.village, profile?.mandal, profile?.division].filter(Boolean).join(', ') || 'Not provided yet'
   const [serviceAmount, setServiceAmount] = useState('')
   const [serviceOfferStatus, setServiceOfferStatus] = useState('pending')
+  const [requestSoundEnabled, setRequestSoundEnabled] = useState(true)
+  const [notificationPermission, setNotificationPermission] = useState(() => typeof window !== 'undefined' && 'Notification' in window ? window.Notification.permission : 'unsupported')
   const [image, setImage] = useState(accountType === 'Service Provider' ? '/src/Service_Provider_Img.png' : '/src/Workers.png')
   const fallbackImage = isProvider ? '/src/Service_Provider_Img.png' : '/src/Workers.png'
+
+  const enableDeviceNotifications = async () => {
+    if (!('Notification' in window)) {
+      setNotificationPermission('unsupported')
+      return
+    }
+    try { setNotificationPermission(await window.Notification.requestPermission()) } catch { setNotificationPermission('denied') }
+  }
 
   const handleImageChange = (event) => {
     const file = event.target.files?.[0]
@@ -1670,8 +1708,70 @@ function ProfilePanel({ accountType, profile, availability, onAvailabilityChange
       {isProvider && <label>Request accept status<select value={availability} onChange={(event) => onAvailabilityChange(event.target.value)}><option>Active</option><option>Inactive</option></select><ChevronDown className="select-icon" size={16} /></label>}
       {(isProvider || isCustomer) && <ProfileRequestActions role={role} serviceAmount={serviceAmount} onServiceAmountChange={setServiceAmount} serviceOfferStatus={serviceOfferStatus} onServiceOfferStatusChange={setServiceOfferStatus} />}
     </div>
+    {isProvider && <>
+      <section className="incoming-request-empty" aria-live="polite"><strong>Incoming service requests</strong><p>When a request is assigned to you, an alert will show the Customer Name and Customer Address here.</p></section>
+      <section className="provider-alert-preferences" aria-label="Service request notifications">
+        <strong>Request notifications</strong>
+        <label><input type="checkbox" checked={requestSoundEnabled} onChange={(event) => setRequestSoundEnabled(event.target.checked)} /> Play an alert sound for new requests</label>
+        <button type="button" onClick={enableDeviceNotifications} disabled={notificationPermission === 'granted'}>{notificationPermission === 'granted' ? 'Device notifications enabled' : 'Enable device notifications'}</button>
+        {notificationPermission === 'denied' && <small>Notifications are blocked in browser settings.</small>}
+        {notificationPermission === 'unsupported' && <small>Device notifications are not supported in this browser.</small>}
+      </section>
+    </>}
     <div className={isProvider && availability === 'Active' ? 'availability-note active' : 'availability-note'}><span className="status-dot" />{isProvider ? availability === 'Active' ? 'Accepting new service requests' : 'Not accepting service requests' : isCustomer ? 'Customer profile ready' : `${role} profile active`}</div>
+    {isProvider && incomingServiceRequest && <ProviderIncomingRequestModal request={incomingServiceRequest} playSound={requestSoundEnabled} onAccept={onAcceptServiceRequest} onCancel={onCancelServiceRequest} />}
+    {isCustomer && acceptedServiceProvider && <CustomerProviderAcceptedModal provider={acceptedServiceProvider} onClose={onCloseAcceptedServiceRequest} />}
   </section>
+}
+
+function ProviderIncomingRequestModal({ request, playSound = true, onAccept, onCancel }) {
+  const [isOpen, setIsOpen] = useState(true)
+  useEffect(() => {
+    if (playSound) playRequestAlertTone()
+  }, [playSound])
+  if (!isOpen) return null
+  return <div className="request-alert-backdrop" role="presentation">
+    <section className="request-alert-dialog" role="alertdialog" aria-modal="true" aria-labelledby="incoming-request-title">
+      <p className="eyebrow">New service request</p>
+      <h2 id="incoming-request-title">A customer needs your service</h2>
+      <dl className="request-alert-details">
+        <div><dt>Customer Name</dt><dd>{request.customerName}</dd></div>
+        <div><dt>Customer Address</dt><dd>{request.customerAddress}</dd></div>
+      </dl>
+      <div className="request-alert-actions">
+        <button type="button" className="request-alert-cancel" onClick={() => { onCancel?.(); setIsOpen(false) }}>Cancel</button>
+        <button type="button" className="request-alert-accept" onClick={() => { onAccept?.(); setIsOpen(false) }}>Accept</button>
+      </div>
+    </section>
+  </div>
+}
+
+function CustomerProviderAcceptedModal({ provider, onClose }) {
+  const [isOpen, setIsOpen] = useState(true)
+  if (!isOpen) return null
+  return <div className="request-alert-backdrop" role="presentation">
+    <section className="request-alert-dialog" role="dialog" aria-modal="true" aria-labelledby="provider-accepted-title">
+      <button className="close-button" type="button" onClick={() => { onClose?.(); setIsOpen(false) }} aria-label="Close provider details"><X size={20} /></button>
+      <p className="eyebrow">Request accepted</p>
+      <h2 id="provider-accepted-title">A Service Provider has accepted your request</h2>
+      <dl className="request-alert-details">
+        <div><dt>Service Provider Name</dt><dd>{provider.name}</dd></div>
+        <div><dt>Service Provider Address</dt><dd>{provider.address}</dd></div>
+      </dl>
+      <p className="request-accepted-note">The Service Provider has received your request. Service Provider: {provider.name}. The Service Provider will contact you shortly by phone.</p>
+      <div className="request-alert-actions"><button type="button" className="request-alert-accept" onClick={() => { onClose?.(); setIsOpen(false) }}>Got it</button></div>
+    </section>
+  </div>
+}
+
+function CustomerRequestProgress({ status, onRetry }) {
+  if (status === 'exhausted') return <div className="request-progress exhausted" role="alert">
+    <p>All our Service Providers are currently busy. Please try again later.</p>
+    <button type="button" onClick={onRetry}>Try again</button>
+  </div>
+  if (status === 'contacting-next') return <div className="request-progress" role="status"><span className="request-progress-spinner" aria-hidden="true" /><p>The provider is unavailable. We’re contacting the next nearby Service Provider.</p></div>
+  if (status === 'cancelled') return <div className="request-progress" role="status"><p>Your service request was cancelled.</p></div>
+  return <div className="request-progress" role="status"><span className="request-progress-spinner" aria-hidden="true" /><p>Looking for the nearest available Service Provider within 20 km.</p></div>
 }
 
 function ServiceHistoryModal({ accountType, onClose }) {
@@ -1805,7 +1905,7 @@ function ProfileRequestActions({ role, serviceAmount, onServiceAmountChange, ser
   </section>
 }
 
-function RegistrationModal({ type, submitted, setSubmitted, onSignedIn, onSignOut, onClose, initialAdminView, onAdminSuccess, onAdminViewChange }) {
+function RegistrationModal({ type, submitted, setSubmitted, requesterProfile, onSignedIn, onSignOut, onClose, initialAdminView, onAdminSuccess, onAdminViewChange }) {
   const isLabour = type === 'labour'
   const isContact = type === 'contact'
   const isFeedback = type === 'feedback'
@@ -1818,7 +1918,11 @@ function RegistrationModal({ type, submitted, setSubmitted, onSignedIn, onSignOu
   const [selectedMusicianType, setSelectedMusicianType] = useState('')
   const [selectedMultiServices, setSelectedMultiServices] = useState([])
   const [selectedFarmLaborTask, setSelectedFarmLaborTask] = useState('')
-  const [customerName, setCustomerName] = useState('')
+  const [customerName, setCustomerName] = useState(() => requesterProfile?.fullName || '')
+  const [customerAddress, setCustomerAddress] = useState(() => [requesterProfile?.village, requesterProfile?.mandal, requesterProfile?.division].filter(Boolean).join(', '))
+  const [customerCoordinates, setCustomerCoordinates] = useState('')
+  const [customerLocationError, setCustomerLocationError] = useState('')
+  const [customerRequestStatus, setCustomerRequestStatus] = useState('searching')
   const [providerName, setProviderName] = useState('')
   const [customerNeed, setCustomerNeed] = useState('')
   const [isListening, setIsListening] = useState(false)
@@ -1839,6 +1943,19 @@ function RegistrationModal({ type, submitted, setSubmitted, onSignedIn, onSignOu
     setCaptchaCode(Math.random().toString(36).slice(2, 7).toUpperCase())
     setCaptchaAnswer('')
     setCaptchaError('')
+  }
+
+  const captureCustomerLocation = () => {
+    if (!navigator.geolocation) {
+      setCustomerLocationError('Location access is not available in this browser. Enter the address manually.')
+      return
+    }
+    setCustomerLocationError('')
+    navigator.geolocation.getCurrentPosition((position) => {
+      setCustomerCoordinates(`${position.coords.latitude.toFixed(6)}, ${position.coords.longitude.toFixed(6)}`)
+    }, () => {
+      setCustomerLocationError('Could not get your location. Enter the address manually.')
+    }, { enableHighAccuracy: true, timeout: 10000 })
   }
 
   useEffect(() => {
@@ -1951,8 +2068,8 @@ function RegistrationModal({ type, submitted, setSubmitted, onSignedIn, onSignOu
       {!isAdmin && <button className="close-button" onClick={onClose} aria-label="Close registration form"><X size={20} /></button>}
       {submitted ? <div className="success-state admin-dashboard">
         <span className="success-icon"><Check size={26} /></span>
-        <p className="eyebrow">{isPayment ? 'Payment complete' : isAdmin ? 'Admin dashboard' : isFeedback ? 'Feedback received' : isContact ? 'Message received' : 'You’re on the list'}</p>
-        <h2>{isPayment ? 'Payment exchange success' : isAdmin ? 'Hello, Admin.' : isFeedback ? 'Thanks for your feedback.' : isContact ? 'Thanks for contacting us.' : 'Thanks for reaching out.'}</h2>
+        <p className="eyebrow">{isPayment ? 'Payment complete' : isAdmin ? 'Admin dashboard' : isFeedback ? 'Feedback received' : isContact ? 'Message received' : isCustomer ? 'Request submitted' : 'You’re on the list'}</p>
+        <h2>{isPayment ? 'Payment exchange success' : isAdmin ? 'Hello, Admin.' : isFeedback ? 'Thanks for your feedback.' : isContact ? 'Thanks for contacting us.' : isCustomer ? 'We’re finding a nearby Service Provider' : 'Thanks for reaching out.'}</h2>
         {isPayment ? <div className="payment-summary">
           <div><span>Flow</span><strong>{paymentScenarios.find((scenario) => scenario.id === paymentScenario)?.label}</strong></div>
           <div><span>Method</span><strong>{paymentMethod}</strong></div>
@@ -1960,7 +2077,15 @@ function RegistrationModal({ type, submitted, setSubmitted, onSignedIn, onSignOu
           <div><span>Provider receives</span><strong>₹{providerReceives.toLocaleString('en-IN')}</strong></div>
           <div><span>Platform fee</span><strong>₹{appCollects.toLocaleString('en-IN')}</strong></div>  
           <div><span>{settlementLabel}</span><strong>₹{settlementAmount.toLocaleString('en-IN')}</strong></div>
-        </div> : isAdmin ? <AdminDashboard initialView={initialAdminView} onViewChange={onAdminViewChange} onSignOut={onSignOut} onHome={onClose} /> : <p>{isFeedback ? 'Your thoughts help us improve the local work board.' : isContact ? 'We’ve received your message and will get back to you shortly.' : 'We’ve received your details and will be in touch shortly.'}</p>}
+        </div> : isAdmin ? <AdminDashboard initialView={initialAdminView} onViewChange={onAdminViewChange} onSignOut={onSignOut} onHome={onClose} /> : isCustomer ? <div className="request-submitted-summary" role="status">
+          <p>A nearby active Service Provider will be notified. You’ll see their name and address here after they accept.</p>
+          <CustomerRequestProgress status={customerRequestStatus} onRetry={() => { setCustomerRequestStatus('searching'); setSubmitted(false) }} />
+          <dl className="request-alert-details">
+            <div><dt>Customer Name</dt><dd>{customerName}</dd></div>
+            <div><dt>Customer Address</dt><dd>{customerAddress}</dd></div>
+            {customerCoordinates && <div><dt>Location coordinates</dt><dd>{customerCoordinates}</dd></div>}
+          </dl>
+        </div> : <p>{isFeedback ? 'Your thoughts help us improve the local work board.' : isContact ? 'We’ve received your message and will get back to you shortly.' : 'We’ve received your details and will be in touch shortly.'}</p>}
         {!isAdmin && <button className="primary-button" onClick={onClose}>Back to home <ArrowRight size={18} /></button>}
       </div> : <><p className="eyebrow">{isPayment ? 'Secure transfer' : isAdmin ? adminOtpStep ? 'Mobile verification' : 'Secure access' : isFeedback ? 'Help us improve' : isContact ? 'Get in touch' : isLabour }</p><h2 id="modal-title">{isPayment ? 'Payment Exchange' : isAdmin ? adminOtpStep ? 'Enter your OTP' : 'Admin login' : isFeedback ? 'Tell us what you think' : isContact ? 'How can we help?' : isLabour ? 'Register as a service provider' : 'Tell us what you need'}</h2><p className="modal-intro">{isPayment ? 'Choose the payment flow, method, and commission split for a customer and service provider transaction.' : isAdmin ? adminOtpStep ? 'Enter the one-time password sent to your registered mobile number.' : 'Sign in with your email, password, and CAPTCHA to continue.' : isFeedback ? 'Share a quick rating and note about your experience.' : isContact ? 'Send us a note and our team will respond shortly.' : isLabour ? 'Share a few details and start finding work near you.' : 'We’ll help you connect with a trusted professional nearby.'}</p><form onSubmit={(event) => { event.preventDefault(); if (isAdmin && !adminOtpStep) { if (captchaAnswer.trim().toUpperCase() !== captchaCode) { setCaptchaError('CAPTCHA does not match.'); return } setAdminOtpStep(true); return } if (isAdmin && !/^\d{6}$/.test(adminOtp)) { setOtpError('Enter the 6-digit OTP sent to your mobile.'); return } if (!isLabour && !isContact && !isFeedback && !isPayment) onSignedIn(); if (isAdmin) onAdminSuccess(); setSubmitted(true) }}>
         {isPayment ? <>
@@ -2005,6 +2130,14 @@ function RegistrationModal({ type, submitted, setSubmitted, onSignedIn, onSignOu
           {selectedService === 'Marriage & Other Functions Service Providers' && selectedSpecialty === 'Multi-Select' && <fieldset className="service-multiselect"><legend>Service types</legend>{marriageFunctionSpecialists.filter((item) => !item.divider && item.value !== 'Specialist').map((item, index) => <label className="service-multiselect-option" key={item.name}><input type="checkbox" checked={selectedMultiServices.includes(item.name)} required={selectedMultiServices.length === 0 && index === 0} onChange={(event) => { const isChecked = event.target.checked; setSelectedMultiServices((current) => isChecked ? [...current, item.name] : current.filter((service) => service !== item.name)); if (item.name === 'Musicians' && !isChecked) setSelectedMusicianType('') }} /><span>{item.name}</span></label>)}</fieldset>}
           {selectedService === 'Marriage & Other Functions Service Providers' && (selectedSpecialty === 'Musicians' || (selectedSpecialty === 'Multi-Select' && selectedMultiServices.includes('Musicians'))) && <label>Choose a music type<select required value={selectedMusicianType} onChange={(event) => setSelectedMusicianType(event.target.value)}><option value="" disabled>Select a music type</option>{musicianTypes.map((type) => <option key={type} value={type}>{type}</option>)}</select><ChevronDown className="select-icon" size={16} /></label>}
         </> : isContact ? <><label>Customer care numbers<div className="customer-care-list"><a href="tel:+919876543210">+91 98765 43210</a><a href="tel:+919123456789">+91 91234 56789</a></div></label><label>Your message<textarea required placeholder="Tell us how we can help" /></label></> : isFeedback ? <><label>How would you rate your experience?<select required defaultValue=""><option value="" disabled>Select a rating</option><option>Excellent</option><option>Good</option><option>Needs improvement</option></select><ChevronDown className="select-icon" size={16} /></label><label>Your feedback<textarea required placeholder="Share your thoughts" /></label></> : isCustomer ? <>
+          <label>Customer Name<input required type="text" value={customerName} onChange={(event) => setCustomerName(event.target.value)} placeholder="Enter your name" /></label>
+          <label>Customer Address<textarea required rows="2" value={customerAddress} onChange={(event) => setCustomerAddress(event.target.value)} placeholder="Enter the service location address" /></label>
+          <div className="request-location-tools">
+            <button type="button" className="location-button" onClick={captureCustomerLocation}>Use my current location</button>
+            {customerCoordinates && <small>Location captured: {customerCoordinates}</small>}
+            {customerLocationError && <small className="voice-error">{customerLocationError}</small>}
+            <small>Share the service location so the nearest available provider can be identified.</small>
+          </div>
           <label>What do you need help with?<div className="voice-select-row"><select required value={selectedService} onChange={(event) => { setSelectedService(event.target.value); setSelectedSpecialty(''); setSelectedMusicianType(''); setSelectedMultiServices([]); setSelectedFarmLaborTask(''); setVoiceError('') }}><option value="" disabled>Select a service</option>{labourTypes.map((item) => <option key={item} value={item}>{item}</option>)}</select><ChevronDown className="select-icon" size={16} /><button className={isListening && listeningTarget === 'service' ? 'voice-button listening' : 'voice-button'} type="button" onClick={() => startVoiceInput('service')} aria-label="Choose a service by voice" title="Choose a service by voice">{isListening && listeningTarget === 'service' ? <MicOff size={16} /> : <Mic size={16} />}</button></div></label>
           {selectedService && <label>Choose a service type<div className="voice-select-row"><select required value={selectedSpecialty} onChange={(event) => { setSelectedSpecialty(event.target.value); setSelectedMusicianType(''); setSelectedMultiServices([]); setSelectedFarmLaborTask(''); setVoiceError('') }}><option value="" disabled>Select a service type</option>{getSpecialistOptions(selectedService).map((item) => <option key={item.value} value={item.value} disabled={item.disabled}>{item.disabled ? item.label : item.description ? `${item.label} → ${item.description}` : item.label}</option>)}{selectedService === 'Marriage & Other Functions Service Providers' && <option value="Multi-Select">★ Multi-Select Option</option>}</select><ChevronDown className="select-icon" size={16} /><button className={isListening && listeningTarget === 'specialty' ? 'voice-button listening' : 'voice-button'} type="button" onClick={() => startVoiceInput('specialty')} aria-label="Choose a service type by voice" title="Choose a service type by voice">{isListening && listeningTarget === 'specialty' ? <MicOff size={16} /> : <Mic size={16} />}</button></div></label>}
           {selectedService === 'Farming Service Providers' && selectedSpecialty === 'Multi-Select' && <fieldset className="service-multiselect"><legend>Service types</legend>{farmingSpecialists.filter((item) => !item.divider && item.value !== 'Multi-Select').map((item, index) => <label className="service-multiselect-option" key={item.name}><input type="checkbox" checked={selectedMultiServices.includes(item.name)} required={selectedMultiServices.length === 0 && index === 0} onChange={(event) => { const isChecked = event.target.checked; setSelectedMultiServices((current) => isChecked ? [...current, item.name] : current.filter((service) => service !== item.name)); if (item.name === 'Farm Laborers' && !isChecked) setSelectedFarmLaborTask('') }} /><span>{item.name}</span></label>)}</fieldset>}
