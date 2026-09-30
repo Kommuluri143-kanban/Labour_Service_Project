@@ -17,11 +17,12 @@ function dateDaysAgo(days) {
   return toDateInputValue(date)
 }
 
-function getOneYearAgo() {
-  const date = new Date()
-  date.setHours(12, 0, 0, 0)
-  date.setFullYear(date.getFullYear() - 1)
-  return toDateInputValue(date)
+function getSixMonthsAgo() {
+  const currentDate = new Date()
+  const targetMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() - 6, 1)
+  const lastDayOfTargetMonth = new Date(targetMonth.getFullYear(), targetMonth.getMonth() + 1, 0).getDate()
+  targetMonth.setDate(Math.min(currentDate.getDate(), lastDayOfTargetMonth))
+  return toDateInputValue(targetMonth)
 }
 
 function formatServiceDate(date) {
@@ -1036,10 +1037,12 @@ const formPaths = {
 const adminViewPaths = {
   providers: '/Admin/ServiceProvidersManagement',
   payments: '/Admin/PaymentStatus',
+  employers: '/Admin/Employers',
   'service-providers': '/Admin/ServiceProviders',
 }
 const registeredProfilesKey = 'worknear.registeredProfiles'
 const activeProfileKey = 'worknear.activeProfile'
+const resignationRequestsKey = 'worknear.resignationRequests'
 
 function normalizeMobileNumber(mobile) {
   const digits = String(mobile || '').replace(/\D/g, '')
@@ -1055,6 +1058,37 @@ function readRegisteredProfiles() {
   } catch {
     return []
   }
+}
+
+function readResignationRequests() {
+  try {
+    const requests = JSON.parse(window.localStorage.getItem(resignationRequestsKey) || '[]')
+    return Array.isArray(requests) ? requests : []
+  } catch {
+    return []
+  }
+}
+
+function readEmployerProfiles() {
+  const resignationRequests = readResignationRequests().filter((request) => request?.accountType === 'Employer')
+  return readRegisteredProfiles()
+    .filter((profile) => profile?.profileType === 'Employer')
+    .map((profile) => {
+      const profileMobile = normalizeMobileNumber(profile?.mobile)
+      const profileName = String(profile?.fullName || profile?.name || '').trim().toLocaleLowerCase()
+      const hasResigned = resignationRequests.some((request) => {
+        const requestMobile = normalizeMobileNumber(request?.mobile)
+        if (profileMobile && requestMobile) return profileMobile === requestMobile
+        return profileName && profileName === String(request?.fullName || '').trim().toLocaleLowerCase()
+      })
+      return {
+        id: profileMobile || profileName || `${profile?.profileType}-${profile?.division || ''}-${profile?.mandal || ''}`,
+        name: profile?.fullName || profile?.name || 'Employer',
+        mobile: profile?.mobile || '',
+        address: profile?.address || [profile?.village, profile?.mandal, profile?.division].filter(Boolean).join(', ') || 'Not provided yet',
+        status: profile?.status === 'Resigned' || hasResigned ? 'Resigned' : 'Active',
+      }
+    })
 }
 
 function readActiveProfile() {
@@ -1078,6 +1112,7 @@ function getRouteState(pathname = window.location.pathname) {
   if (path === '/signup') return { entryScreen: 'signup', activeForm: null, submitted: false, adminView: 'providers' }
   if (path === '/signout') return { entryScreen: 'signout', activeForm: null, submitted: false, adminView: 'providers' }
   if (path === '/admin/paymentstatus') return { entryScreen: 'app', activeForm: 'admin', submitted: true, adminView: 'payments' }
+  if (path === '/admin/employers') return { entryScreen: 'app', activeForm: 'admin', submitted: true, adminView: 'employers' }
   if (path === '/admin/serviceproviders') return { entryScreen: 'app', activeForm: 'admin', submitted: true, adminView: 'service-providers' }
   if (path === '/admin/serviceprovidersmanagement') return { entryScreen: 'app', activeForm: 'admin', submitted: true, adminView: 'providers' }
   if (path === '/admin') return { entryScreen: 'app', activeForm: 'admin', submitted: false, adminView: 'providers' }
@@ -1107,6 +1142,12 @@ function App() {
   const [menuOpen, setMenuOpen] = useState(false)
   const [profileOpen, setProfileOpen] = useState(false)
   const [serviceHistoryOpen, setServiceHistoryOpen] = useState(false)
+  const [resignationDialogOpen, setResignationDialogOpen] = useState(false)
+  const [resignationSubmitted, setResignationSubmitted] = useState(false)
+  const [resignationError, setResignationError] = useState('')
+  const [closeAccountDialogOpen, setCloseAccountDialogOpen] = useState(false)
+  const [accountClosed, setAccountClosed] = useState(false)
+  const [closeAccountError, setCloseAccountError] = useState('')
   const [submitted, setSubmitted] = useState(initialRoute.submitted)
   const [signedIn, setSignedIn] = useState(Boolean(initialProfile))
   const [userProfile, setUserProfile] = useState(initialProfile)
@@ -1119,6 +1160,7 @@ function App() {
   const canAccessContactFeedback = !signedIn || ['Customer', 'Service Provider', 'Employer', 'Admin'].includes(profileAccountType)
   const canViewEmployerDirectories = signedIn && profileAccountType === 'Employer'
   const canViewServiceHistory = !signedIn || ['Customer', 'Service Provider', 'Admin', 'Employer'].includes(profileAccountType)
+  const canCloseAccount = signedIn && ['Customer', 'Service Provider'].includes(profileAccountType)
 
   const applyRouteState = (routeState) => {
     setEntryScreen(routeState.entryScreen)
@@ -1147,6 +1189,90 @@ function App() {
     setEntryScreen('app')
     setMenuOpen(false)
     setProfileOpen(false)
+  }
+
+  const openResignationDialog = () => {
+    if (!signedIn || profileAccountType !== 'Employer') return
+    setResignationSubmitted(false)
+    setResignationError('')
+    setResignationDialogOpen(true)
+  }
+
+  const closeResignationDialog = () => {
+    setResignationDialogOpen(false)
+    setResignationSubmitted(false)
+    setResignationError('')
+  }
+
+  const submitResignationRequest = () => {
+    if (!signedIn || profileAccountType !== 'Employer') return
+    let existingRequests = []
+    try {
+      const parsedRequests = JSON.parse(window.localStorage.getItem(resignationRequestsKey) || '[]')
+      existingRequests = Array.isArray(parsedRequests) ? parsedRequests : []
+    } catch {
+      existingRequests = []
+    }
+
+    const request = {
+      id: `resignation-${Date.now()}`,
+      fullName: userProfile?.fullName || '',
+      mobile: userProfile?.mobile || '',
+      accountType: profileAccountType,
+      status: 'Pending review',
+      submittedAt: new Date().toISOString(),
+    }
+    try {
+      window.localStorage.setItem(resignationRequestsKey, JSON.stringify([...existingRequests, request]))
+      setResignationError('')
+      setResignationSubmitted(true)
+    } catch {
+      setResignationError('Unable to submit your request right now. Please try again.')
+    }
+  }
+
+  const openCloseAccountDialog = () => {
+    setAccountClosed(false)
+    setCloseAccountError('')
+    setCloseAccountDialogOpen(true)
+  }
+
+  const closeCloseAccountDialog = () => {
+    const wasClosed = accountClosed
+    setCloseAccountDialogOpen(false)
+    setAccountClosed(false)
+    setCloseAccountError('')
+    if (wasClosed) navigateTo('/')
+  }
+
+  const confirmCloseAccount = () => {
+    if (!canCloseAccount) return
+    let originalRegisteredProfiles = null
+    try {
+      originalRegisteredProfiles = window.localStorage.getItem(registeredProfilesKey)
+      const parsedProfiles = JSON.parse(originalRegisteredProfiles || '[]')
+      const registeredProfiles = Array.isArray(parsedProfiles) ? parsedProfiles : []
+      const mobileKey = normalizeMobileNumber(userProfile?.mobile)
+      const fullName = String(userProfile?.fullName || '').trim().toLocaleLowerCase()
+      const remainingProfiles = registeredProfiles.filter((profile) => {
+        const registeredMobileKey = normalizeMobileNumber(profile.mobile)
+        if (mobileKey && registeredMobileKey) return registeredMobileKey !== mobileKey
+        return !fullName || profile.profileType !== profileAccountType || String(profile.fullName || '').trim().toLocaleLowerCase() !== fullName
+      })
+
+      window.localStorage.setItem(registeredProfilesKey, JSON.stringify(remainingProfiles))
+      window.localStorage.removeItem(activeProfileKey)
+      setUserProfile(null)
+      setSignedIn(false)
+      setProfileOpen(false)
+      setCloseAccountError('')
+      setAccountClosed(true)
+    } catch {
+      if (originalRegisteredProfiles !== null) {
+        try { window.localStorage.setItem(registeredProfilesKey, originalRegisteredProfiles) } catch { /* Keep the account closure failure visible if storage cannot be restored. */ }
+      }
+      setCloseAccountError('Unable to close your account right now. Please try again.')
+    }
   }
 
   const closeForm = () => {
@@ -1242,6 +1368,8 @@ function App() {
           {canAccessAdmin && <button className="text-button" onClick={() => openForm('admin')}>Admin</button>}
         </nav>
         <div className="profile-area">
+          {signedIn && profileAccountType === 'Employer' && <button className="profile-resign" type="button" onClick={openResignationDialog}>Resign</button>}
+          {canCloseAccount && <button className="profile-resign profile-close-account" type="button" onClick={openCloseAccountDialog}>Close Account</button>}
           <button className="profile-trigger" onClick={() => setProfileOpen(!profileOpen)} aria-expanded={profileOpen} aria-controls="profile-panel">
             <span className="profile-trigger-avatar"><UserRound size={17} /></span>
             <span className="profile-trigger-copy"><strong>{signedIn ? 'My profile' : 'Profile'}</strong><small>{signedIn ? 'Signed in' : 'View details'}</small></span>
@@ -1296,6 +1424,8 @@ function App() {
 
       {activeForm && !(activeForm === 'customer' && !canAccessCustomerServices) && !(activeForm === 'labour' && !canOpenProviderRegistration) && !(activeForm === 'payment' && !canAccessPaymentExchange) && !((activeForm === 'contact' || activeForm === 'feedback') && !canAccessContactFeedback) && !(activeForm === 'admin' && !canAccessAdmin) && <RegistrationModal type={activeForm} submitted={submitted} setSubmitted={setSubmitted} onSignedIn={() => { setSignedIn(true); if (!signedIn && activeForm === 'customer') setProfileAccountType('Customer') }} onSignOut={handleAdminSignOut} onClose={closeForm} initialAdminView={adminInitialView} onAdminSuccess={handleAdminSuccess} onAdminViewChange={handleAdminViewChange} />}
       {serviceHistoryOpen && <ServiceHistoryModal accountType={profileAccountType} onClose={() => setServiceHistoryOpen(false)} />}
+      {resignationDialogOpen && <ResignationConfirmationModal accountType={profileAccountType} submitted={resignationSubmitted} error={resignationError} onConfirm={submitResignationRequest} onClose={closeResignationDialog} />}
+      {closeAccountDialogOpen && <CloseAccountConfirmationModal closed={accountClosed} error={closeAccountError} onConfirm={confirmCloseAccount} onClose={closeCloseAccountDialog} />}
     </main>
   )
 }
@@ -1545,7 +1675,9 @@ function ProfilePanel({ accountType, profile, availability, onAvailabilityChange
 }
 
 function ServiceHistoryModal({ accountType, onClose }) {
-  const [historyStartDate, setHistoryStartDate] = useState(getOneYearAgo)
+  const earliestHistoryDate = getSixMonthsAgo()
+  const latestHistoryDate = toDateInputValue(new Date())
+  const [historyStartDate, setHistoryStartDate] = useState(getSixMonthsAgo)
   const [historyEndDate, setHistoryEndDate] = useState(() => toDateInputValue(new Date()))
   const visibleHistory = profilePreviewHistory
     .filter((record) => record.date >= historyStartDate && record.date <= historyEndDate)
@@ -1562,8 +1694,8 @@ function ServiceHistoryModal({ accountType, onClose }) {
       <div className="service-history-content">
         <p className="service-history-sample">Sample records</p>
         <div className="service-history-dates">
-          <label>Start date<input type="date" value={historyStartDate} max={historyEndDate} onChange={(event) => setHistoryStartDate(event.target.value)} /></label>
-          <label>End date<input type="date" value={historyEndDate} min={historyStartDate} max={toDateInputValue(new Date())} onChange={(event) => setHistoryEndDate(event.target.value)} /></label>
+          <label>Start date<input type="date" value={historyStartDate} min={earliestHistoryDate} max={historyEndDate || latestHistoryDate} onChange={(event) => setHistoryStartDate(event.target.value)} /></label>
+          <label>End date<input type="date" value={historyEndDate} min={historyStartDate || earliestHistoryDate} max={latestHistoryDate} onChange={(event) => setHistoryEndDate(event.target.value)} /></label>
         </div>
         {visibleHistory.length ? <ul className="service-history-list">
           {visibleHistory.map((record) => <li key={record.id}>
@@ -1572,6 +1704,50 @@ function ServiceHistoryModal({ accountType, onClose }) {
           </li>)}
         </ul> : <p className="service-history-empty">No service history for these dates.</p>}
       </div>
+    </section>
+  </div>
+}
+
+function ResignationConfirmationModal({ accountType, submitted, error, onConfirm, onClose }) {
+  return <div className="admin-confirm-backdrop" role="presentation">
+    <section className="admin-confirm-dialog resignation-dialog" role={submitted ? 'dialog' : 'alertdialog'} aria-modal="true" aria-labelledby="resignation-dialog-title">
+      {submitted ? <>
+        <p className="eyebrow">Request submitted</p>
+        <h3 id="resignation-dialog-title">Resignation request submitted</h3>
+        <p>Your request has been saved for review.</p>
+        <div className="admin-confirm-actions"><button className="table-action approve" type="button" onClick={onClose}>Close</button></div>
+      </> : <>
+        <p className="eyebrow">Confirm request</p>
+        <h3 id="resignation-dialog-title">Submit resignation request?</h3>
+        <p>This will submit a resignation request for your {accountType} profile.</p>
+        {error && <p className="resignation-error" role="alert">{error}</p>}
+        <div className="admin-confirm-actions">
+          <button className="table-action approve" type="button" onClick={onConfirm}>Confirm</button>
+          <button className="table-action" type="button" onClick={onClose}>Cancel</button>
+        </div>
+      </>}
+    </section>
+  </div>
+}
+
+function CloseAccountConfirmationModal({ closed, error, onConfirm, onClose }) {
+  return <div className="admin-confirm-backdrop" role="presentation">
+    <section className="admin-confirm-dialog close-account-dialog" role={closed ? 'dialog' : 'alertdialog'} aria-modal="true" aria-labelledby="close-account-dialog-title">
+      {closed ? <>
+        <p className="eyebrow">Account closed</p>
+        <h3 id="close-account-dialog-title">Your account is closed</h3>
+        <p>Your profile and saved sign-in session have been removed.</p>
+        <div className="admin-confirm-actions"><button className="table-action approve" type="button" onClick={onClose}>Close</button></div>
+      </> : <>
+        <p className="eyebrow">Permanent action</p>
+        <h3 id="close-account-dialog-title">Close your account?</h3>
+        <p>This permanently closes your account and removes its saved profile. You will be signed out.</p>
+        {error && <p className="resignation-error" role="alert">{error}</p>}
+        <div className="admin-confirm-actions">
+          <button className="table-action block" type="button" onClick={onConfirm}>Confirm</button>
+          <button className="table-action" type="button" onClick={onClose}>Cancel</button>
+        </div>
+      </>}
     </section>
   </div>
 }
@@ -1933,6 +2109,7 @@ function SortableTableHeader({ columns, sort, onSort }) {
 }
 
 function AdminDashboard({ initialView = 'providers', onViewChange, onSignOut, onHome }) {
+  const employers = readEmployerProfiles()
   const [adminView, setAdminView] = useState(initialView)
   const [activeProviderSort, setActiveProviderSort] = useState({ key: 'name', direction: 'asc' })
   const [accessProviderSort, setAccessProviderSort] = useState({ key: 'name', direction: 'asc' })
@@ -2038,8 +2215,8 @@ function AdminDashboard({ initialView = 'providers', onViewChange, onSignOut, on
   }))
 
   return <div className="admin-dashboard-content">
-    <div className="admin-dashboard-header"><div><h3>{adminView === 'payments' ? 'Payment Status' : adminView === 'service-providers' ? 'Service Providers' : 'Service Providers Management'}</h3></div><div className="admin-dashboard-actions"><button className="admin-dashboard-link" type="button" onClick={() => adminView === 'providers' ? onHome?.() : changeAdminView('providers')} aria-label={adminView === 'providers' ? 'Back to home' : 'Back to Service Providers Management'}><ArrowLeft size={14} /> Back</button><button className="admin-dashboard-link" type="button" onClick={() => changeAdminView('payments')}>Payment Status</button><button className="admin-dashboard-link" type="button" onClick={() => changeAdminView('service-providers')}>Customers Information</button></div></div>
-    {adminView === 'payments' ? <AdminPaymentStatus providers={providers} /> : adminView === 'service-providers' ? <AdminServiceProviders providers={providers} /> : <>
+    <div className="admin-dashboard-header"><div><h3>{adminView === 'payments' ? 'Payment Status' : adminView === 'employers' ? 'Employers' : adminView === 'service-providers' ? 'Customers' : 'Service Providers Management'}</h3></div><div className="admin-dashboard-actions"><button className="admin-dashboard-link" type="button" onClick={() => adminView === 'providers' ? onHome?.() : changeAdminView('providers')} aria-label={adminView === 'providers' ? 'Back to home' : 'Back to Service Providers Management'}><ArrowLeft size={14} /> Back</button><button className="admin-dashboard-link" type="button" onClick={() => changeAdminView('payments')}>Payment Status</button><button className="admin-dashboard-link" type="button" onClick={() => changeAdminView('employers')}>Employers</button><button className="admin-dashboard-link" type="button" onClick={() => changeAdminView('service-providers')}>Customers</button></div></div>
+    {adminView === 'payments' ? <AdminPaymentStatus providers={providers} /> : adminView === 'employers' ? <AdminEmployers employers={employers} /> : adminView === 'service-providers' ? <AdminServiceProviders providers={providers} /> : <>
     <div className="admin-dashboard-grid">
       <div className="admin-stat"><strong>3</strong><span>Active Service Providers</span></div>
       <div className="admin-stat"><strong>1</strong><span>Inactive Service Provider</span></div>
@@ -2078,14 +2255,36 @@ function AdminDashboard({ initialView = 'providers', onViewChange, onSignOut, on
 }
 
 function AdminServiceProviders({ providers }) {
-  return <section className="admin-service-providers-page" aria-label="Service providers">
-    <AdminTableSection description="Service providers profiles and their uploaded scan codes.">
-      <div className="admin-table-wrap"><table className="admin-table service-provider-list-table"><thead><tr><th>Service Provider Name</th><th>Mobile Number</th><th>Address</th><th>Service Provider Uploaded (Scan Code)</th></tr></thead><tbody>{providers.map((provider) => <tr key={provider.id}><td><strong>{provider.name}</strong></td><td>{provider.mobile}</td><td>{provider.address}</td><td><ScanCodeStatus uploaded={provider.scanCodeUploaded !== false} /></td></tr>)}</tbody></table></div>
+  const [search, setSearch] = useState('')
+  const filteredCustomers = filterAdminProviderRows(providers, search)
+
+  return <div>
+    <AdminTableSection description="Customer names and contact details.">
+      <div className="admin-table-search"><label><span>Search</span><input type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Customer name or mobile number" aria-label="Search customer records by customer name or mobile number" /></label></div>
+      <div className="admin-table-wrap"><table className="admin-table service-provider-list-table"><thead><tr><th>Customer Name</th><th>Mobile Number</th><th>Address</th></tr></thead><tbody>{filteredCustomers.length ? filteredCustomers.map((provider) => <tr key={provider.id}><td><strong>{provider.name}</strong></td><td>{provider.mobile}</td><td>{provider.address}</td></tr>) : <tr><td className="admin-table-empty" colSpan={3}>No customer records match your search.</td></tr>}</tbody></table></div>
     </AdminTableSection>
-    <AdminTableSection title="Platform" description="Platform account and uploaded scan code.">
-      <div className="admin-table-wrap"><table className="admin-table platform-list-table"><thead><tr><th>Platform Name</th><th>Platform Uploaded (Scan Code)</th></tr></thead><tbody><tr><td><strong>WorkNear</strong></td><td><ScanCodeStatus uploaded /></td></tr></tbody></table></div>
-    </AdminTableSection>
+  </div>
+}
+
+function AdminEmployers({ employers }) {
+  return <section className="admin-employers-page" aria-label="Employers">
+    <p className="admin-payment-intro">Registered employer profiles and account status.</p>
+    <EmployerProfilesTable employers={employers} />
   </section>
+}
+
+function EmployerProfilesTable({ employers }) {
+  return <div className="admin-table-wrap">
+    <table className="admin-table employer-profiles-table">
+      <thead><tr><th>Employer Name</th><th>Mobile Number</th><th>Address</th><th>Status</th></tr></thead>
+      <tbody>{employers.length ? employers.map((employer) => <tr key={employer.id}>
+        <td><strong>{employer.name}</strong></td>
+        <td>{employer.mobile}</td>
+        <td>{employer.address}</td>
+        <td><span className={employer.status === 'Resigned' ? 'table-status blocked' : 'table-status complete'}>{employer.status}</span></td>
+      </tr>) : <tr><td className="admin-table-empty" colSpan={4}>No employer profiles found.</td></tr>}</tbody>
+    </table>
+  </div>
 }
 
 function ScanCodeStatus({ uploaded }) {
