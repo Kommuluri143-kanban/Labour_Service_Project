@@ -1153,6 +1153,10 @@ function App() {
   const [closeAccountDialogOpen, setCloseAccountDialogOpen] = useState(false)
   const [accountClosed, setAccountClosed] = useState(false)
   const [closeAccountError, setCloseAccountError] = useState('')
+  const [wNPocketOpen, setWNPocketOpen] = useState(false)
+  const [wNPocketBalance, setWNPocketBalance] = useState(0)
+  const [wNPocketActivity, setWNPocketActivity] = useState([])
+  const [initialPaymentScenario, setInitialPaymentScenario] = useState('customer-to-app')
   const [submitted, setSubmitted] = useState(initialRoute.submitted)
   const [signedIn, setSignedIn] = useState(Boolean(initialProfile))
   const [userProfile, setUserProfile] = useState(initialProfile)
@@ -1166,6 +1170,7 @@ function App() {
   const canAccessContactFeedback = !signedIn || ['Customer', 'Service Provider', 'Employer', 'Admin'].includes(profileAccountType)
   const canViewEmployerDirectories = signedIn && profileAccountType === 'Employer'
   const canViewServiceHistory = !signedIn || ['Customer', 'Service Provider', 'Admin', 'Employer'].includes(profileAccountType)
+  const canAccessWNPocket = signedIn && profileAccountType === 'Service Provider'
   const canCloseAccount = signedIn && ['Customer', 'Service Provider'].includes(profileAccountType)
   const showProfilePanel = profileOpen
     || (signedIn && profileAccountType === 'Service Provider' && Boolean(userProfile?.incomingServiceRequest))
@@ -1186,12 +1191,13 @@ function App() {
     applyRouteState(getRouteState(path))
   }
 
-  const openForm = (form) => {
+  const openForm = (form, paymentScenario = 'customer-to-app') => {
     if (form === 'customer' && !canAccessCustomerServices) return
     if (form === 'labour' && !canOpenProviderRegistration) return
     if (form === 'payment' && !canAccessPaymentExchange) return
     if ((form === 'contact' || form === 'feedback') && !canAccessContactFeedback) return
     if (form === 'admin' && signedIn && profileAccountType !== 'Admin') return
+    if (form === 'payment') setInitialPaymentScenario(paymentScenario)
     pushPath(formPaths[form] || '/Home')
     if (form === 'customer') setAcceptedServiceProvider(null)
     setSubmitted(false)
@@ -1199,6 +1205,21 @@ function App() {
     setEntryScreen('app')
     setMenuOpen(false)
     setProfileOpen(false)
+  }
+
+  const recordCashInHandPayment = ({ amount, customerName }) => {
+    if (!canAccessWNPocket) return
+    const serviceAmount = Number(amount)
+    const feeAmount = Number((serviceAmount * getAppCommissionRate(serviceAmount) / 100).toFixed(2))
+    if (serviceAmount <= 0 || feeAmount <= 0) return
+    setWNPocketBalance((balance) => Number((balance - feeAmount).toFixed(2)))
+    setWNPocketActivity((activity) => [{
+      id: `cash-fee-${Date.now()}`,
+      customerName,
+      serviceAmount,
+      feeAmount,
+      createdAt: new Date().toISOString(),
+    }, ...activity])
   }
 
   const openResignationDialog = () => {
@@ -1368,13 +1389,14 @@ function App() {
           {canViewEmployerDirectories && <>
             <a className="nav-section-link" href="#approved-customer-requests" onClick={() => setMenuOpen(false)}>Approved Customer Requests</a>
           </>}
+          {canAccessAdmin && <button className="text-button" onClick={() => openForm('admin')}>Admin</button>}
           <button className="nav-cta contact-cta" onClick={() => openForm('contact')} disabled={!canAccessContactFeedback} aria-disabled={!canAccessContactFeedback} title={!canAccessContactFeedback ? 'Contact Us is unavailable for Admin profiles.' : undefined}>Contact us</button>
           <button className="nav-cta feedback-cta" onClick={() => openForm('feedback')} disabled={!canAccessContactFeedback} aria-disabled={!canAccessContactFeedback} title={!canAccessContactFeedback ? 'Feedback is unavailable for Admin profiles.' : undefined}>Feedback</button>
-          {canAccessAdmin && <button className="text-button" onClick={() => openForm('admin')}>Admin</button>}
+          {canAccessWNPocket && <button className="nav-cta wnpocket-nav-link" type="button" onClick={() => { setWNPocketOpen(true); setMenuOpen(false); setProfileOpen(false) }}>WNPocket</button>}
+          {canCloseAccount && <button className="nav-cta nav-close-account" type="button" onClick={() => { openCloseAccountDialog(); setMenuOpen(false) }}>Close Account</button>}
         </nav>
         <div className="profile-area">
           {signedIn && profileAccountType === 'Employer' && <button className="profile-resign" type="button" onClick={openResignationDialog}>Resign</button>}
-          {canCloseAccount && <button className="profile-resign profile-close-account" type="button" onClick={openCloseAccountDialog}>Close Account</button>}
           <button className="profile-trigger" onClick={() => setProfileOpen(!profileOpen)} aria-expanded={profileOpen} aria-controls="profile-panel">
             <span className="profile-trigger-avatar"><UserRound size={17} /></span>
             <span className="profile-trigger-copy"><strong>{signedIn ? 'My profile' : 'Profile'}</strong><small>{signedIn ? 'Signed in' : 'View details'}</small></span>
@@ -1422,10 +1444,11 @@ function App() {
         </div>
       </div>
 
-      {activeForm && !(activeForm === 'customer' && !canAccessCustomerServices) && !(activeForm === 'labour' && !canOpenProviderRegistration) && !(activeForm === 'payment' && !canAccessPaymentExchange) && !((activeForm === 'contact' || activeForm === 'feedback') && !canAccessContactFeedback) && !(activeForm === 'admin' && !canAccessAdmin) && <RegistrationModal type={activeForm} submitted={submitted} setSubmitted={setSubmitted} requesterProfile={userProfile} onSignedIn={() => { setSignedIn(true); if (!signedIn && activeForm === 'customer') setProfileAccountType('Customer') }} onClose={closeForm} initialAdminView={adminInitialView} onAdminSuccess={handleAdminSuccess} onAdminViewChange={handleAdminViewChange} />}
+      {activeForm && !(activeForm === 'customer' && !canAccessCustomerServices) && !(activeForm === 'labour' && !canOpenProviderRegistration) && !(activeForm === 'payment' && !canAccessPaymentExchange) && !((activeForm === 'contact' || activeForm === 'feedback') && !canAccessContactFeedback) && !(activeForm === 'admin' && !canAccessAdmin) && <RegistrationModal type={activeForm} submitted={submitted} setSubmitted={setSubmitted} requesterProfile={userProfile} onSignedIn={() => { setSignedIn(true); if (!signedIn && activeForm === 'customer') setProfileAccountType('Customer') }} onClose={closeForm} initialAdminView={adminInitialView} initialPaymentScenario={initialPaymentScenario} onCashInHandPaymentComplete={recordCashInHandPayment} onAdminSuccess={handleAdminSuccess} onAdminViewChange={handleAdminViewChange} />}
       {serviceHistoryOpen && <ServiceHistoryModal accountType={profileAccountType} onClose={() => setServiceHistoryOpen(false)} />}
       {resignationDialogOpen && <ResignationConfirmationModal accountType={profileAccountType} submitted={resignationSubmitted} error={resignationError} onConfirm={submitResignationRequest} onClose={closeResignationDialog} />}
       {closeAccountDialogOpen && <CloseAccountConfirmationModal closed={accountClosed} error={closeAccountError} onConfirm={confirmCloseAccount} onClose={closeCloseAccountDialog} />}
+      {wNPocketOpen && canAccessWNPocket && <WNPocketModal profile={userProfile} balance={wNPocketBalance} activity={wNPocketActivity} onOpenCashInHandPayment={() => { setWNPocketOpen(false); openForm('payment', 'provider-to-app') }} onClose={() => setWNPocketOpen(false)} />}
     </main>
   )
 }
@@ -1695,6 +1718,103 @@ function ProfilePanel({ accountType, profile, availability, onAvailabilityChange
   </section>
 }
 
+function WNPocketModal({ profile, balance, activity, onOpenCashInHandPayment, onClose }) {
+  const [verified, setVerified] = useState(false)
+  const [demoOtp, setDemoOtp] = useState('')
+  const [enteredOtp, setEnteredOtp] = useState('')
+  const [otpError, setOtpError] = useState('')
+  const [activeView, setActiveView] = useState('overview')
+  const [amount, setAmount] = useState('')
+  const [paymentApp, setPaymentApp] = useState('PhonePe')
+  const [actionMessage, setActionMessage] = useState('')
+  const mobileDigits = String(profile?.mobile || '').replace(/\D/g, '')
+  const maskedMobile = mobileDigits.length >= 4 ? `•••• ••• ${mobileDigits.slice(-4)}` : 'your registered mobile number'
+  const amountValue = Number(amount) || 0
+  const formatWalletAmount = (value) => `${value < 0 ? '-' : ''}₹${Math.abs(value).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`
+
+  const sendDemoOtp = () => {
+    setDemoOtp(String(Math.floor(100000 + Math.random() * 900000)))
+    setEnteredOtp('')
+    setOtpError('')
+  }
+
+  const verifyDemoOtp = (event) => {
+    event.preventDefault()
+    if (enteredOtp !== demoOtp) {
+      setOtpError('The code does not match. Please try again.')
+      return
+    }
+    setVerified(true)
+    setOtpError('')
+  }
+
+  const selectView = (view) => {
+    setActiveView(view)
+    setAmount('')
+    setActionMessage('')
+  }
+
+  const startExternalPayment = (event) => {
+    event.preventDefault()
+    setActionMessage(`${paymentApp} payment connection is a preview. No payment has been started.`)
+  }
+
+  return <div className="modal-backdrop" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
+    <section className="modal wnpocket-modal" role="dialog" aria-modal="true" aria-labelledby="wnpocket-title">
+      <button className="close-button" type="button" onClick={onClose} aria-label="Close WNPocket"><X size={20} /></button>
+      <div className="wnpocket-heading">
+        <div><p className="eyebrow">Service Provider Wallet</p><h2 id="wnpocket-title">WNPocket</h2></div>
+      </div>
+      {!verified ? <div className="wnpocket-otp-panel">
+        <h3>Verify your mobile to view your balance</h3>
+        <p>A one-time code will be sent to {maskedMobile} when SMS verification is connected.</p>
+        {!demoOtp ? <button className="primary-button" type="button" onClick={sendDemoOtp}>Preview mobile OTP</button> : <form className="wnpocket-form" onSubmit={verifyDemoOtp}>
+          <label>Mobile OTP<input type="text" inputMode="numeric" pattern="[0-9]{6}" maxLength="6" required value={enteredOtp} onChange={(event) => { setEnteredOtp(event.target.value.replace(/\D/g, '')); setOtpError('') }} placeholder="Enter 6-digit code" /></label>
+          <p className="wnpocket-demo-code">Demo OTP: <strong>{demoOtp}</strong></p>
+          <button className="primary-button" type="submit">Verify and view wallet</button>
+          {otpError && <p className="wnpocket-error" role="alert">{otpError}</p>}
+        </form>}
+        <p className="wnpocket-preview-note">UI preview only: this code is generated in the browser. Real SMS delivery and server-side OTP verification are required for secure access.</p>
+      </div> : <>
+        <div className="wnpocket-balance-card">
+          <span>Preview available balance</span>
+          <strong>{formatWalletAmount(balance)}</strong>
+          <small>{balance < 0 ? 'Cash-in-Hand platform fees are reflected in this local preview balance.' : 'Live wallet balances will appear after the wallet service is connected.'}</small>
+        </div>
+        <nav className="wnpocket-tabs" aria-label="WNPocket actions">
+          {[['overview', 'Overview'], ['top-up', 'Top up'], ['withdraw', 'Withdraw'], ['cash-in-hand', 'Cash-in-Hand fees']].map(([view, label]) => <button key={view} type="button" className={activeView === view ? 'active' : ''} aria-pressed={activeView === view} onClick={() => selectView(view)}>{label}</button>)}
+        </nav>
+        {activeView === 'overview' && <div className="wnpocket-content">
+          <section className="wnpocket-info-card"><h3>Wallet activity</h3>{activity.length === 0 ? <p className="wnpocket-empty">No wallet transactions are available yet.</p> : <div className="wnpocket-activity-list">{activity.map((transaction) => <article className="wnpocket-activity-item" key={transaction.id}><div><strong>Cash-in-Hand platform fee</strong><span>Service amount {formatWalletAmount(transaction.serviceAmount)}{transaction.customerName ? ` · ${transaction.customerName}` : ''}</span><time dateTime={transaction.createdAt}>{new Date(transaction.createdAt).toLocaleString()}</time></div><strong className="wnpocket-activity-debit">-{formatWalletAmount(transaction.feeAmount)}</strong></article>)}</div>}</section>
+        </div>}
+        {activeView === 'top-up' && <form className="wnpocket-form" onSubmit={startExternalPayment}>
+          <h3>Top up WNPocket</h3>
+          <label>Amount (INR)<input type="number" min="1" step="0.01" required value={amount} onChange={(event) => { setAmount(event.target.value); setActionMessage('') }} placeholder="Enter top-up amount" /></label>
+          <label>Payment app<select value={paymentApp} onChange={(event) => setPaymentApp(event.target.value)}><option>PhonePe</option><option>Paytm</option><option>Other UPI app</option></select></label>
+          <button className="primary-button" type="submit" disabled={amountValue <= 0}>Continue with {paymentApp}</button>
+          {actionMessage && <p className="wnpocket-status" role="status">{actionMessage}</p>}
+        </form>}
+        {activeView === 'withdraw' && <form className="wnpocket-form" onSubmit={startExternalPayment}>
+          <h3>Withdraw from WNPocket</h3>
+          <p>Withdrawable preview balance: {formatWalletAmount(balance)}</p>
+          <label>Amount (INR)<input type="number" min="1" step="0.01" required value={amount} onChange={(event) => { setAmount(event.target.value); setActionMessage('') }} placeholder="Enter withdrawal amount" /></label>
+          <label>Send to<select value={paymentApp} onChange={(event) => setPaymentApp(event.target.value)}><option>PhonePe</option><option>Paytm</option><option>Other UPI app</option></select></label>
+          <button className="primary-button" type="submit" disabled={amountValue <= 0 || amountValue > balance}>Continue with {paymentApp}</button>
+          <p className="wnpocket-empty">Withdrawals are unavailable until a wallet balance is received.</p>
+          {actionMessage && <p className="wnpocket-status" role="status">{actionMessage}</p>}
+        </form>}
+        {activeView === 'cash-in-hand' && <div className="wnpocket-form">
+          <h3>Cash-in-Hand platform fee</h3>
+          <p>When you record a completed Cash-in-Hand service, its platform fee is calculated and automatically deducted from WNPocket.</p>
+          <div className="wnpocket-fee-summary"><span>Deduction timing</span><strong>At payment completion</strong></div>
+          <button className="primary-button" type="button" onClick={onOpenCashInHandPayment}>Record Cash-in-Hand payment <ArrowRight size={18} /></button>
+          <p className="wnpocket-preview-note">This UI preview records the fee in local wallet activity. A connected wallet service will post the real deduction.</p>
+        </div>}
+      </>}
+    </section>
+  </div>
+}
+
 function ProviderIncomingRequestModal({ request, playSound = true, onAccept, onCancel }) {
   const [isOpen, setIsOpen] = useState(true)
   useEffect(() => {
@@ -1873,7 +1993,7 @@ function ProfileRequestActions({ role, serviceAmount, onServiceAmountChange, ser
   </section>
 }
 
-function RegistrationModal({ type, submitted, setSubmitted, requesterProfile, onSignedIn, onClose, initialAdminView, onAdminSuccess, onAdminViewChange }) {
+function RegistrationModal({ type, submitted, setSubmitted, requesterProfile, onSignedIn, onClose, initialAdminView, initialPaymentScenario = 'customer-to-app', onCashInHandPaymentComplete, onAdminSuccess, onAdminViewChange }) {
   const isLabour = type === 'labour'
   const isContact = type === 'contact'
   const isFeedback = type === 'feedback'
@@ -1886,12 +2006,12 @@ function RegistrationModal({ type, submitted, setSubmitted, requesterProfile, on
   const [selectedMusicianType, setSelectedMusicianType] = useState('')
   const [selectedMultiServices, setSelectedMultiServices] = useState([])
   const [selectedFarmLaborTask, setSelectedFarmLaborTask] = useState('')
-  const [customerName, setCustomerName] = useState(() => requesterProfile?.fullName || '')
+  const [customerName, setCustomerName] = useState(() => isPayment ? '' : requesterProfile?.fullName || '')
   const [customerAddress, setCustomerAddress] = useState(() => [requesterProfile?.village, requesterProfile?.mandal, requesterProfile?.division].filter(Boolean).join(', '))
   const [customerCoordinates, setCustomerCoordinates] = useState('')
   const [customerLocationError, setCustomerLocationError] = useState('')
   const [customerRequestStatus, setCustomerRequestStatus] = useState('searching')
-  const [providerName, setProviderName] = useState('')
+  const [providerName, setProviderName] = useState(() => requesterProfile?.profileType === 'Service Provider' ? requesterProfile.fullName || '' : '')
   const [isListening, setIsListening] = useState(false)
   const [listeningTarget, setListeningTarget] = useState('')
   const [voiceError, setVoiceError] = useState('')
@@ -1903,8 +2023,8 @@ function RegistrationModal({ type, submitted, setSubmitted, requesterProfile, on
   const [captchaError, setCaptchaError] = useState('')
   const [otpError, setOtpError] = useState('')
   const [amount, setAmount] = useState('')
-  const [paymentScenario, setPaymentScenario] = useState('customer-to-app')
-  const [paymentMethod, setPaymentMethod] = useState('QR scan')
+  const [paymentScenario, setPaymentScenario] = useState(initialPaymentScenario)
+  const [paymentMethod, setPaymentMethod] = useState(initialPaymentScenario === 'provider-to-app' ? 'Cash in hand' : 'QR scan')
 
   const refreshCaptcha = () => {
     setCaptchaCode(Math.random().toString(36).slice(2, 7).toUpperCase())
@@ -2013,9 +2133,10 @@ function RegistrationModal({ type, submitted, setSubmitted, requesterProfile, on
   const activeScenarioMethods = paymentScenarios.find((scenario) => scenario.id === paymentScenario)?.methods || []
   const customerPays = paymentScenario === 'customer-to-app' || paymentScenario === 'provider-to-app' ? numericAmount : 0
   const appCollects = paymentScenario === 'customer-to-app' ? appCommission : paymentScenario === 'provider-to-app' ? appCommission : 0
-  const providerReceives = paymentScenario === 'customer-to-app' || paymentScenario === 'provider-to-app' ? providerPayout : 0
+  const providerReceives = paymentScenario === 'customer-to-app' ? providerPayout : paymentScenario === 'provider-to-app' ? numericAmount : 0
+  const isWalletCashInHandPayment = isPayment && paymentScenario === 'provider-to-app' && paymentMethod === 'Cash in hand' && requesterProfile?.profileType === 'Service Provider' && numericAmount > 0
   const customerPaysLabel = paymentScenario === 'customer-to-app' ? 'Customer pays → Platform' : 'Customer pays → Service Provider'
-  const settlementLabel = paymentScenario === 'customer-to-app' ? 'Platform pays → Service Provider' : 'Service Provider pays → Platform'
+  const settlementLabel = paymentScenario === 'customer-to-app' ? 'Platform pays → Service Provider' : isWalletCashInHandPayment ? 'Automatic WNPocket deduction' : 'Service Provider pays → Platform'
   const settlementAmount = paymentScenario === 'customer-to-app' ? providerPayout : appCommission
   const handleAdminBack = () => {
     if (adminOtpStep) {
@@ -2028,7 +2149,7 @@ function RegistrationModal({ type, submitted, setSubmitted, requesterProfile, on
   }
 
   return <div className="modal-backdrop" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
-    <section className={isAdmin ? 'modal admin-modal' : 'modal'} role="dialog" aria-modal="true" aria-labelledby="modal-title">
+    <section className={isAdmin ? 'modal admin-modal' : 'modal'} role="dialog" aria-modal="true" aria-labelledby="modal-title" onSubmitCapture={() => { if (isWalletCashInHandPayment) onCashInHandPaymentComplete?.({ amount: numericAmount, customerName }) }}>
       {!isAdmin && <button className="close-button" onClick={onClose} aria-label="Close registration form"><X size={20} /></button>}
       {submitted ? <div className="success-state admin-dashboard">
         <span className="success-icon"><Check size={26} /></span>
@@ -2061,7 +2182,7 @@ function RegistrationModal({ type, submitted, setSubmitted, requesterProfile, on
           }}><option value="" disabled>Select a scenario</option>{paymentScenarios.map((scenario) => <option key={scenario.id} value={scenario.id}>{scenario.label}</option>)}</select><ChevronDown className="select-icon" size={16} /></label>
           <label>Payment method<select required value={paymentMethod} onChange={(event) => setPaymentMethod(event.target.value)}><option value="" disabled>Select a method</option>{activeScenarioMethods.map((method) => <option key={method} value={method}>{method}</option>)}</select><ChevronDown className="select-icon" size={16} /></label>
           <label>Customer name<input required type="text" value={customerName} onChange={(event) => setCustomerName(event.target.value)} placeholder="e.g. Arjun Reddy" /></label>
-          <label>Service provider name<input required type="text" value={providerName} onChange={(event) => setProviderName(event.target.value)} placeholder="Enter service provider name" /></label>
+          <label>Service provider name<input required type="text" value={providerName} readOnly={requesterProfile?.profileType === 'Service Provider'} onChange={(event) => setProviderName(event.target.value)} placeholder="Enter service provider name" /></label>
           <label>Service amount<input required type="number" min="0" step="1" value={amount} onChange={(event) => setAmount(event.target.value)} placeholder="Enter service amount" /></label>
           {(paymentScenario === 'customer-to-app' || paymentScenario === 'provider-to-app') && <label>App commission (%)<input required type="number" value={commissionRate} readOnly /></label>}
           <div className="payment-breakdown">

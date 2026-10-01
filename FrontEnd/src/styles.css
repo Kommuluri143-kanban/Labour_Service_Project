@@ -552,3 +552,52 @@ footer { max-width: 1180px; border-top-color: var(--line); color: #75858a; }
   .nav-links a, .nav-links .nav-section-link, .nav-links .nav-cta { min-height: 40px; padding: 11px 12px; font-size: 12px; text-align: left; }
   .home-directory-sections { padding: 0 20px; }
 }
+
+.wnpocket-nav-link { color: var(--deep-teal); font-weight: 800; }
+.wnpocket-modal { width: min(100%, 720px); }
+.wnpocket-heading { display: flex; align-items: center; justify-content: space-between; gap: 18px; padding-right: 25px; }
+.wnpocket-heading h2 { margin: 0; }
+.wnpocket-flow-label { padding: 8px 11px; border-radius: 20px; color: var(--deep-teal); background: #e7f1eb; font-size: 11px; font-weight: 700; text-align: center; }
+.wnpocket-otp-panel { max-width: 430px; margin: 30px auto 10px; }
+.wnpocket-otp-panel h3, .wnpocket-form h3, .wnpocket-info-card h3 { margin: 0; color: var(--deep-teal); font-size: 18px; }
+.wnpocket-otp-panel > p, .wnpocket-form > p, .wnpocket-info-card p { color: var(--muted); font-size: 12px; line-height: 1.5; }
+.wnpocket-otp-panel .primary-button, .wnpocket-form .primary-button { width: 100%; }
+.wnpocket-form { display: grid; gap: 13px; margin-top: 24px; }
+.wnpocket-form label { display: grid; gap: 6px; color: var(--ink); font-size: 12px; font-weight: 700; }
+.wnpocket-form input, .wnpocket-form select { width: 100%; padding: 11px 12px; border: 1px solid #cbd9d1; border-radius: 5px; color: var(--ink); background: #fff; font: inherit; }
+.wnpocket-form input:focus, .wnpocket-form select:focus { border-color: var(--teal); outline: 3px solid rgba(33,107,104,.12); }
+.wnpocket-demo-code { padding: 10px 12px; border-radius: 5px; color: #694f18 !important; background: #fff5d9; }
+.wnpocket-preview-note { margin: 14px 0 0; padding: 11px 12px; border-left: 3px solid var(--yellow); color: #687b80; background: #f8fbf8; font-size: 11px; line-height: 1.5; }
+.wnpocket-error { margin: 0; color: #a14b37; font-size: 12px; }
+.wnpocket-balance-card { display: grid; gap: 7px; margin: 24px 0 16px; padding: 21px; border-radius: 8px; color: #fff; background: linear-gradient(125deg, var(--deep-teal), #34856e); }
+.wnpocket-balance-card span { font-size: 12px; opacity: .9; }
+.wnpocket-balance-card strong { font: 700 34px/1.1 var(--display); }
+.wnpocket-balance-card small { font-size: 11px; opacity: .85; }
+.wnpocket-tabs { display: flex; flex-wrap: wrap; gap: 7px; padding-bottom: 13px; border-bottom: 1px solid var(--line); }
+.wnpocket-tabs button { padding: 8px 11px; border: 1px solid #cbd9d1; border-radius: 5px; color: var(--deep-teal); background: #fff; font-size: 11px; font-weight: 700; }
+.wnpocket-tabs button.active { border-color: var(--teal); color: #fff; background: var(--teal); }
+.wnpocket-content { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 16px; }
+.wnpocket-info-card { padding: 16px; border: 1px solid var(--line); border-radius: 7px; background: #f8fbf8; }
+.wnpocket-activity-list { display: grid; gap: 9px; margin-top: 14px; }
+.wnpocket-activity-item { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 11px 0; border-top: 1px solid var(--line); }
+.wnpocket-activity-item > div { display: grid; gap: 4px; }
+.wnpocket-activity-item > div > strong { color: var(--ink); font-size: 12px; }
+.wnpocket-activity-item span, .wnpocket-activity-item time { color: var(--muted); font-size: 10px; }
+.wnpocket-activity-item time { font-variant-numeric: tabular-nums; }
+.wnpocket-activity-item .wnpocket-activity-debit { color: #a44e37; font-size: 12px; white-space: nowrap; }
+.wnpocket-flow-steps { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; color: var(--deep-teal); font-size: 10px; font-weight: 700; }
+.wnpocket-empty { padding: 12px; border-radius: 5px; color: var(--muted); background: #f8fbf8; font-size: 12px; }
+.wnpocket-status { margin: 0; padding: 11px 12px; border-radius: 5px; color: var(--deep-teal) !important; background: #e7f1eb; font-size: 12px; }
+.wnpocket-fee-summary { display: flex; justify-content: space-between; gap: 12px; padding: 13px; border: 1px solid var(--line); border-radius: 5px; color: var(--ink); background: #f8fbf8; font-size: 12px; }
+.wnpocket-fee-summary strong { color: var(--deep-teal); }
+@media (max-width: 600px) {
+  .wnpocket-modal { padding: 26px 18px; }
+  .wnpocket-heading { display: block; padding-right: 24px; }
+  .wnpocket-flow-label { display: inline-block; margin-top: 10px; }
+  .wnpocket-content { grid-template-columns: 1fr; }
+}
+.nav-links .nav-close-account { min-height: 38px; padding: 9px 12px; border: 1px solid #d59b88; border-radius: 5px; color: #a44e37; background: #fff6f2; font-size: 12px; font-weight: 700; white-space: nowrap; }
+.nav-links .nav-close-account:hover { border-color: #a44e37; color: #a44e37; background: #fff1eb; transform: none; }
+@media (max-width: 700px) {
+  .nav-links .nav-close-account { min-height: 40px; padding: 11px 12px; font-size: 12px; text-align: left; }
+}
