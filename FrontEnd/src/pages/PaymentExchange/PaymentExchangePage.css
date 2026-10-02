@@ -1,0 +1,4 @@
+@import '../routePageBase.css';
+
+.route-page--payment-exchange { background: #f4f7f4; }
+.route-page--payment-exchange .modal { width: min(100%, 720px); }

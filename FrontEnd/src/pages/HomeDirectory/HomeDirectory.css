@@ -1,0 +1,23 @@
+
+.home-directory-sections { max-width: 1220px; margin: 0 auto; padding: 0 32px; }
+.home-directory-section { padding: 35px 0 7px; scroll-margin-top: 22px; }
+.home-directory-heading { margin-bottom: 17px; }
+.home-directory-heading .eyebrow { margin-bottom: 9px; }
+.home-directory-heading h2 { font-size: clamp(25px, 3vw, 34px); line-height: 1.1; }
+.home-directory-heading > p:last-child { margin: 8px 0 0; color: var(--muted); font-size: 12px; }
+.approved-requests-table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 6px; background: #fff; }
+.approved-requests-search { display: grid; gap: 6px; padding: 13px 12px; border-bottom: 1px solid var(--line); }
+.approved-requests-search label { color: var(--muted); font-size: 11px; font-weight: 700; }
+.approved-requests-search input { width: min(100%, 420px); padding: 10px 11px; border: 1px solid #cccfc8; border-radius: 4px; outline: 0; color: var(--ink); background: #fff; font-size: 12px; }
+.approved-requests-search input:focus { border-color: var(--teal); box-shadow: 0 0 0 3px rgba(33,107,104,.11); }
+.approved-requests-table { width: 100%; min-width: 980px; border-collapse: collapse; text-align: left; font-size: 12px; }
+.approved-requests-table th { padding: 0; border-bottom: 1px solid var(--line); background: #f8f4ec; }
+.approved-requests-sort-button { width: 100%; min-height: 43px; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 12px; border: 0; color: var(--muted); background: transparent; text-align: left; font-size: 10px; font-weight: 700; white-space: nowrap; }
+.approved-requests-sort-button:hover, .approved-requests-sort-button:focus-visible { color: var(--teal); background: #edf3ed; }
+.approved-requests-sort-indicator { color: var(--teal); font-size: 15px; }
+.approved-requests-table td { padding: 13px 12px; border-top: 1px solid #eee3d3; color: var(--ink); vertical-align: middle; white-space: nowrap; }
+.approved-requests-table tbody tr:first-child td { border-top: 0; }
+.approved-requests-empty { color: var(--muted) !important; text-align: center; }
+@media (max-width: 700px) {
+  .home-directory-sections { padding: 0 20px; }
+}

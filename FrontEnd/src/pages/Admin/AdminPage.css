@@ -1,0 +1,4 @@
+@import '../routePageBase.css';
+
+.route-page--admin { background: #f4f7f4; }
+.route-page--admin .modal { width: min(100%, 1240px); }
