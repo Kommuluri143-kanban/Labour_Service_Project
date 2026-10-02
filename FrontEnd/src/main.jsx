@@ -1972,7 +1972,7 @@ function ProfileRequestActions({ role, serviceAmount, onServiceAmountChange, ser
     <p>{message}</p>
     <div className={isProvider ? 'profile-request-buttons provider' : 'profile-request-buttons'}>
       {isProvider ? <>
-        <button type="button" className="profile-request-accept" disabled title={providerDisabledReason}>Accept</button>
+        <button type="button" className="profile-request-accept" disabled title={providerDisabledReason}>Accepted Service List</button>
         <button type="button" className="profile-request-call" disabled title={providerDisabledReason}>Call with Customer</button>
       </> : <>
         <button type="button" disabled={!customerCanReviewOffer || Boolean(decision)} onClick={() => setDecision('approved')}>Approve</button>
