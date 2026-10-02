@@ -1,6 +1,6 @@
 import { StrictMode, useEffect, useRef, useState } from 'react'
 import { createRoot } from 'react-dom/client'
-import { ArrowLeft, ArrowRight, CalendarDays, Check, CheckCircle2, ChevronDown, LogOut, Menu, Mic, MicOff, Pencil, QrCode, RefreshCw, ShieldCheck, UserRound, X } from 'lucide-react'
+import { ArrowLeft, ArrowRight, CalendarDays, Check, ChevronDown, Menu, Mic, MicOff, Pencil, RefreshCw, UserRound, X } from 'lucide-react'
 import './styles.css'
 
 function toDateInputValue(date) {
@@ -8,13 +8,6 @@ function toDateInputValue(date) {
   const month = String(date.getMonth() + 1).padStart(2, '0')
   const day = String(date.getDate()).padStart(2, '0')
   return `${year}-${month}-${day}`
-}
-
-function dateDaysAgo(days) {
-  const date = new Date()
-  date.setHours(12, 0, 0, 0)
-  date.setDate(date.getDate() - days)
-  return toDateInputValue(date)
 }
 
 function getSixMonthsAgo() {
@@ -29,28 +22,40 @@ function formatServiceDate(date) {
   return new Intl.DateTimeFormat('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(`${date}T12:00:00`))
 }
 
-const profilePreviewHistory = [
-  { id: 1, service: 'Electrical repair', customer: 'Lakshmi Reddy', date: dateDaysAgo(16), amount: 2500 },
-  { id: 2, service: 'Water pump wiring', customer: 'Ravi Naidu', date: dateDaysAgo(82), amount: 1800 },
-  { id: 3, service: 'Farm motor service', customer: 'Padma Devi', date: dateDaysAgo(174), amount: 3200 },
-  { id: 4, service: 'Switchboard replacement', customer: 'Arjun Reddy', date: dateDaysAgo(276), amount: 1400 },
-  { id: 5, service: 'Pump maintenance', customer: 'Meena Devi', date: dateDaysAgo(364), amount: 2100 },
-]
+function playRequestAlertTone() {
+  const AudioContextClass = window.AudioContext || window.webkitAudioContext
+  if (!AudioContextClass) return
+  let audioContext
+  try { audioContext = new AudioContextClass() } catch { return }
+  const startAt = audioContext.currentTime
+  ;[0, 0.3, 0.6].forEach((offset, index) => {
+    const oscillator = audioContext.createOscillator()
+    const gain = audioContext.createGain()
+    const toneStart = startAt + offset
+    oscillator.type = 'sine'
+    oscillator.frequency.value = 880
+    gain.gain.setValueAtTime(0.0001, toneStart)
+    gain.gain.exponentialRampToValueAtTime(0.12, toneStart + 0.025)
+    gain.gain.exponentialRampToValueAtTime(0.0001, toneStart + 0.18)
+    oscillator.connect(gain)
+    gain.connect(audioContext.destination)
+    oscillator.start(toneStart)
+    oscillator.stop(toneStart + 0.19)
+    if (index === 2) oscillator.onended = () => audioContext.close()
+  })
+}
 
-const approvedCustomerRequests = [
-  { id: 1, customer: 'Lakshmi Reddy', customerMobile: '91234 56789', address: 'Atmakur, Nellore', service: 'Electrical repair', status: 'In progress', provider: 'Suresh Kumar', providerMobile: '90000 12345' },
-  { id: 2, customer: 'Arjun Reddy', customerMobile: '92345 67890', address: 'Marripadu, Nellore', service: 'Plumbing repair', status: 'Completed', provider: 'Ravi Naidu', providerMobile: '90000 67890' },
-]
+const approvedCustomerRequests = []
 
 const categories = [
-  { name: 'Construction Service Providers', icon: '🏗️', count: '5 -> nearby service providers' },
-  { name: 'Driving Service Providers', icon: '🚘', count: '3 -> nearby service providers' },
-  { name: 'Farming Service Providers', icon: '🌾', count: '22 -> nearby service providers' },
-  { name: 'Home Service Providers', icon: '🏠', count: '12 -> nearby service providers' },
-  { name: 'Loader Service Providers', icon: '🚜', count: '0 -> nearby service providers' },
-  { name: 'Marriage & Other Functions Service Providers', icon: '🎊', count: '12 -> nearby service providers' },
-  { name: 'Transport Service Providers', icon: '🚚', count: '0 -> nearby service providers' },
-  { name: 'Vehicle & Machinery Service Providers', icon: '🔧', count: '11 -> nearby service providers' },
+  { name: 'Construction Service Providers', icon: '🏗️' },
+  { name: 'Driving Service Providers', icon: '🚘' },
+  { name: 'Farming Service Providers', icon: '🌾' },
+  { name: 'Home Service Providers', icon: '🏠' },
+  { name: 'Loader Service Providers', icon: '🚜' },
+  { name: 'Marriage & Other Functions Service Providers', icon: '🎊' },
+  { name: 'Transport Service Providers', icon: '🚚' },
+  { name: 'Vehicle & Machinery Service Providers', icon: '🔧' },
 ]
 
 const labourTypes = [
@@ -1148,11 +1153,16 @@ function App() {
   const [closeAccountDialogOpen, setCloseAccountDialogOpen] = useState(false)
   const [accountClosed, setAccountClosed] = useState(false)
   const [closeAccountError, setCloseAccountError] = useState('')
+  const [wNPocketOpen, setWNPocketOpen] = useState(false)
+  const [wNPocketBalance, setWNPocketBalance] = useState(0)
+  const [wNPocketActivity, setWNPocketActivity] = useState([])
+  const [initialPaymentScenario, setInitialPaymentScenario] = useState('customer-to-app')
   const [submitted, setSubmitted] = useState(initialRoute.submitted)
   const [signedIn, setSignedIn] = useState(Boolean(initialProfile))
   const [userProfile, setUserProfile] = useState(initialProfile)
   const [profileAccountType, setProfileAccountType] = useState(initialProfile?.profileType || initialRoute.profileAccountType || 'Service Provider')
   const [providerAvailability, setProviderAvailability] = useState('Active')
+  const [acceptedServiceProvider, setAcceptedServiceProvider] = useState(null)
   const [adminInitialView, setAdminInitialView] = useState(initialRoute.adminView)
   const canAccessCustomerServices = !signedIn || ['Customer', 'Service Provider', 'Employer', 'Admin'].includes(profileAccountType)
   const canOpenProviderRegistration = !signedIn || profileAccountType === 'Service Provider'
@@ -1160,7 +1170,11 @@ function App() {
   const canAccessContactFeedback = !signedIn || ['Customer', 'Service Provider', 'Employer', 'Admin'].includes(profileAccountType)
   const canViewEmployerDirectories = signedIn && profileAccountType === 'Employer'
   const canViewServiceHistory = !signedIn || ['Customer', 'Service Provider', 'Admin', 'Employer'].includes(profileAccountType)
+  const canAccessWNPocket = signedIn && profileAccountType === 'Service Provider'
   const canCloseAccount = signedIn && ['Customer', 'Service Provider'].includes(profileAccountType)
+  const showProfilePanel = profileOpen
+    || (signedIn && profileAccountType === 'Service Provider' && Boolean(userProfile?.incomingServiceRequest))
+    || (signedIn && profileAccountType === 'Customer' && Boolean(acceptedServiceProvider || userProfile?.acceptedServiceProvider))
 
   const applyRouteState = (routeState) => {
     setEntryScreen(routeState.entryScreen)
@@ -1177,18 +1191,35 @@ function App() {
     applyRouteState(getRouteState(path))
   }
 
-  const openForm = (form) => {
+  const openForm = (form, paymentScenario = 'customer-to-app') => {
     if (form === 'customer' && !canAccessCustomerServices) return
     if (form === 'labour' && !canOpenProviderRegistration) return
     if (form === 'payment' && !canAccessPaymentExchange) return
     if ((form === 'contact' || form === 'feedback') && !canAccessContactFeedback) return
     if (form === 'admin' && signedIn && profileAccountType !== 'Admin') return
+    if (form === 'payment') setInitialPaymentScenario(paymentScenario)
     pushPath(formPaths[form] || '/Home')
+    if (form === 'customer') setAcceptedServiceProvider(null)
     setSubmitted(false)
     setActiveForm(form)
     setEntryScreen('app')
     setMenuOpen(false)
     setProfileOpen(false)
+  }
+
+  const recordCashInHandPayment = ({ amount, customerName }) => {
+    if (!canAccessWNPocket) return
+    const serviceAmount = Number(amount)
+    const feeAmount = Number((serviceAmount * getAppCommissionRate(serviceAmount) / 100).toFixed(2))
+    if (serviceAmount <= 0 || feeAmount <= 0) return
+    setWNPocketBalance((balance) => Number((balance - feeAmount).toFixed(2)))
+    setWNPocketActivity((activity) => [{
+      id: `cash-fee-${Date.now()}`,
+      customerName,
+      serviceAmount,
+      feeAmount,
+      createdAt: new Date().toISOString(),
+    }, ...activity])
   }
 
   const openResignationDialog = () => {
@@ -1330,11 +1361,6 @@ function App() {
     navigateTo('/')
   }
 
-  const handleAdminSignOut = () => {
-    clearSession()
-    navigateTo('/Home')
-  }
-
   useEffect(() => {
     const handlePopState = () => applyRouteState(getRouteState())
     window.addEventListener('popstate', handlePopState)
@@ -1363,20 +1389,21 @@ function App() {
           {canViewEmployerDirectories && <>
             <a className="nav-section-link" href="#approved-customer-requests" onClick={() => setMenuOpen(false)}>Approved Customer Requests</a>
           </>}
+          {canAccessAdmin && <button className="text-button" onClick={() => openForm('admin')}>Admin</button>}
           <button className="nav-cta contact-cta" onClick={() => openForm('contact')} disabled={!canAccessContactFeedback} aria-disabled={!canAccessContactFeedback} title={!canAccessContactFeedback ? 'Contact Us is unavailable for Admin profiles.' : undefined}>Contact us</button>
           <button className="nav-cta feedback-cta" onClick={() => openForm('feedback')} disabled={!canAccessContactFeedback} aria-disabled={!canAccessContactFeedback} title={!canAccessContactFeedback ? 'Feedback is unavailable for Admin profiles.' : undefined}>Feedback</button>
-          {canAccessAdmin && <button className="text-button" onClick={() => openForm('admin')}>Admin</button>}
+          {canAccessWNPocket && <button className="nav-cta wnpocket-nav-link" type="button" onClick={() => { setWNPocketOpen(true); setMenuOpen(false); setProfileOpen(false) }}>WNPocket</button>}
+          {canCloseAccount && <button className="nav-cta nav-close-account" type="button" onClick={() => { openCloseAccountDialog(); setMenuOpen(false) }}>Close Account</button>}
         </nav>
         <div className="profile-area">
           {signedIn && profileAccountType === 'Employer' && <button className="profile-resign" type="button" onClick={openResignationDialog}>Resign</button>}
-          {canCloseAccount && <button className="profile-resign profile-close-account" type="button" onClick={openCloseAccountDialog}>Close Account</button>}
           <button className="profile-trigger" onClick={() => setProfileOpen(!profileOpen)} aria-expanded={profileOpen} aria-controls="profile-panel">
             <span className="profile-trigger-avatar"><UserRound size={17} /></span>
             <span className="profile-trigger-copy"><strong>{signedIn ? 'My profile' : 'Profile'}</strong><small>{signedIn ? 'Signed in' : 'View details'}</small></span>
             <ChevronDown size={16} className={profileOpen ? 'profile-chevron open' : 'profile-chevron'} />
           </button>
           <button className="profile-signout" onClick={handleHomeSignOut}>Sign out</button>
-          {profileOpen && <ProfilePanel key={profileAccountType} accountType={profileAccountType} profile={userProfile} availability={providerAvailability} onAvailabilityChange={setProviderAvailability} onSignOut={handleHomeSignOut} onClose={() => setProfileOpen(false)} />}
+          {showProfilePanel && <ProfilePanel key={profileAccountType} accountType={profileAccountType} profile={userProfile} availability={providerAvailability} onAvailabilityChange={setProviderAvailability} onClose={() => setProfileOpen(false)} incomingServiceRequest={userProfile?.incomingServiceRequest} acceptedServiceProvider={profileAccountType === 'Customer' ? acceptedServiceProvider || userProfile?.acceptedServiceProvider : null} onAcceptServiceRequest={() => { setAcceptedServiceProvider({ name: userProfile?.fullName || 'Service Provider', address: userProfile?.address || [userProfile?.village, userProfile?.mandal, userProfile?.division].filter(Boolean).join(', ') || 'Address not provided' }); setUserProfile((current) => current ? { ...current, incomingServiceRequest: null } : current) }} onCancelServiceRequest={() => setUserProfile((current) => current ? { ...current, incomingServiceRequest: null } : current)} onCloseAcceptedServiceRequest={() => { setAcceptedServiceProvider(null); setUserProfile((current) => current ? { ...current, acceptedServiceProvider: null } : current) }} />}
         </div>
       </header>
 
@@ -1385,7 +1412,7 @@ function App() {
           <div className="service-area"><p className="eyebrow">Service area</p><p>SPSR Nellore District, Andhra Pradesh</p></div>
           <div className="section-heading"><div><h2>All services</h2></div></div>
           <div className="category-grid">
-            {categories.map((category) => <button className="category-card" key={category.name} onClick={() => openForm('customer')} disabled={!canAccessCustomerServices} aria-disabled={!canAccessCustomerServices}><span className="category-icon">{category.icon}</span><span className="category-name">{category.name}</span><span className="category-count">{category.count}</span><ArrowRight className="card-arrow" size={17} /></button>)}
+            {categories.map((category) => <button className="category-card" key={category.name} onClick={() => openForm('customer')} disabled={!canAccessCustomerServices} aria-disabled={!canAccessCustomerServices}><span className="category-icon">{category.icon}</span><span className="category-name">{category.name}</span><ArrowRight className="card-arrow" size={17} /></button>)}
           </div>
         </section>
 
@@ -1404,28 +1431,24 @@ function App() {
                 <button className="payment-button" onClick={() => openForm('payment')} disabled={!canAccessPaymentExchange} aria-disabled={!canAccessPaymentExchange} title={!canAccessPaymentExchange ? 'Payment exchange is unavailable for this profile.' : undefined}>Payment Exchange</button>
                 <span>Track customer payment, service provider payout instantly.</span>
               </div>
-              <div className="trust-row">
-                <div className="avatar-stack" aria-hidden="true"><span>R</span><span>S</span><span>M</span><span>+</span></div>
-                <span><strong>64</strong> service providers listed</span>
-              </div>
             </div>
             <div className="hero-visual">
               <div className="image-frame">
                 <img src="/src/Workers.png" alt="Local workers preparing tools for a repair" />
-                <div className="image-caption"><span className="status-dot" /> Profiles checked by the community <ShieldCheck size={16} /></div>
               </div>
             </div>
           </section>
 
           {canViewEmployerDirectories && <HomeDirectorySections />}
-          <footer><span>© 2026 WorkNear</span><span>A small board for useful work</span></footer>
+      <footer><span>© {new Date().getFullYear()} WorkNear</span><span>A small board for useful work</span></footer>
         </div>
       </div>
 
-      {activeForm && !(activeForm === 'customer' && !canAccessCustomerServices) && !(activeForm === 'labour' && !canOpenProviderRegistration) && !(activeForm === 'payment' && !canAccessPaymentExchange) && !((activeForm === 'contact' || activeForm === 'feedback') && !canAccessContactFeedback) && !(activeForm === 'admin' && !canAccessAdmin) && <RegistrationModal type={activeForm} submitted={submitted} setSubmitted={setSubmitted} onSignedIn={() => { setSignedIn(true); if (!signedIn && activeForm === 'customer') setProfileAccountType('Customer') }} onSignOut={handleAdminSignOut} onClose={closeForm} initialAdminView={adminInitialView} onAdminSuccess={handleAdminSuccess} onAdminViewChange={handleAdminViewChange} />}
+      {activeForm && !(activeForm === 'customer' && !canAccessCustomerServices) && !(activeForm === 'labour' && !canOpenProviderRegistration) && !(activeForm === 'payment' && !canAccessPaymentExchange) && !((activeForm === 'contact' || activeForm === 'feedback') && !canAccessContactFeedback) && !(activeForm === 'admin' && !canAccessAdmin) && <RegistrationModal type={activeForm} submitted={submitted} setSubmitted={setSubmitted} requesterProfile={userProfile} onSignedIn={() => { setSignedIn(true); if (!signedIn && activeForm === 'customer') setProfileAccountType('Customer') }} onClose={closeForm} initialAdminView={adminInitialView} initialPaymentScenario={initialPaymentScenario} onCashInHandPaymentComplete={recordCashInHandPayment} onAdminSuccess={handleAdminSuccess} onAdminViewChange={handleAdminViewChange} />}
       {serviceHistoryOpen && <ServiceHistoryModal accountType={profileAccountType} onClose={() => setServiceHistoryOpen(false)} />}
       {resignationDialogOpen && <ResignationConfirmationModal accountType={profileAccountType} submitted={resignationSubmitted} error={resignationError} onConfirm={submitResignationRequest} onClose={closeResignationDialog} />}
       {closeAccountDialogOpen && <CloseAccountConfirmationModal closed={accountClosed} error={closeAccountError} onConfirm={confirmCloseAccount} onClose={closeCloseAccountDialog} />}
+      {wNPocketOpen && canAccessWNPocket && <WNPocketModal profile={userProfile} balance={wNPocketBalance} activity={wNPocketActivity} onOpenCashInHandPayment={() => { setWNPocketOpen(false); openForm('payment', 'provider-to-app') }} onClose={() => setWNPocketOpen(false)} />}
     </main>
   )
 }
@@ -1634,17 +1657,26 @@ function SignInFlow({ mode, onBack, onSuccess }) {
   </main>
 }
 
-function ProfilePanel({ accountType, profile, availability, onAvailabilityChange, onSignOut, onClose }) {
+function ProfilePanel({ accountType, profile, availability, onAvailabilityChange, onClose, incomingServiceRequest = null, acceptedServiceProvider = null, onAcceptServiceRequest, onCancelServiceRequest, onCloseAcceptedServiceRequest }) {
   const role = accountType || 'Customer'
   const isProvider = role === 'Service Provider'
   const isCustomer = role === 'Customer'
   const name = profile?.fullName || (isProvider ? 'Service Provider' : isCustomer ? 'Customer' : role)
   const mobile = profile?.mobile || 'Mobile number not provided'
-  const serviceArea = [profile?.village, profile?.mandal, profile?.division].filter(Boolean).join(', ') || 'Not provided yet'
   const [serviceAmount, setServiceAmount] = useState('')
   const [serviceOfferStatus, setServiceOfferStatus] = useState('pending')
+  const [requestSoundEnabled, setRequestSoundEnabled] = useState(true)
+  const [notificationPermission, setNotificationPermission] = useState(() => typeof window !== 'undefined' && 'Notification' in window ? window.Notification.permission : 'unsupported')
   const [image, setImage] = useState(accountType === 'Service Provider' ? '/src/Service_Provider_Img.png' : '/src/Workers.png')
   const fallbackImage = isProvider ? '/src/Service_Provider_Img.png' : '/src/Workers.png'
+
+  const enableDeviceNotifications = async () => {
+    if (!('Notification' in window)) {
+      setNotificationPermission('unsupported')
+      return
+    }
+    try { setNotificationPermission(await window.Notification.requestPermission()) } catch { setNotificationPermission('denied') }
+  }
 
   const handleImageChange = (event) => {
     const file = event.target.files?.[0]
@@ -1670,8 +1702,167 @@ function ProfilePanel({ accountType, profile, availability, onAvailabilityChange
       {isProvider && <label>Request accept status<select value={availability} onChange={(event) => onAvailabilityChange(event.target.value)}><option>Active</option><option>Inactive</option></select><ChevronDown className="select-icon" size={16} /></label>}
       {(isProvider || isCustomer) && <ProfileRequestActions role={role} serviceAmount={serviceAmount} onServiceAmountChange={setServiceAmount} serviceOfferStatus={serviceOfferStatus} onServiceOfferStatusChange={setServiceOfferStatus} />}
     </div>
+    {isProvider && <>
+      <section className="incoming-request-empty" aria-live="polite"><strong>Incoming service requests</strong><p>When a request is assigned to you, an alert will show the Customer Name and Customer Address here.</p></section>
+      <section className="provider-alert-preferences" aria-label="Service request notifications">
+        <strong>Request notifications</strong>
+        <label><input type="checkbox" checked={requestSoundEnabled} onChange={(event) => setRequestSoundEnabled(event.target.checked)} /> Play an alert sound for new requests</label>
+        <button type="button" onClick={enableDeviceNotifications} disabled={notificationPermission === 'granted'}>{notificationPermission === 'granted' ? 'Device notifications enabled' : 'Enable device notifications'}</button>
+        {notificationPermission === 'denied' && <small>Notifications are blocked in browser settings.</small>}
+        {notificationPermission === 'unsupported' && <small>Device notifications are not supported in this browser.</small>}
+      </section>
+    </>}
     <div className={isProvider && availability === 'Active' ? 'availability-note active' : 'availability-note'}><span className="status-dot" />{isProvider ? availability === 'Active' ? 'Accepting new service requests' : 'Not accepting service requests' : isCustomer ? 'Customer profile ready' : `${role} profile active`}</div>
+    {isProvider && incomingServiceRequest && <ProviderIncomingRequestModal request={incomingServiceRequest} playSound={requestSoundEnabled} onAccept={onAcceptServiceRequest} onCancel={onCancelServiceRequest} />}
+    {isCustomer && acceptedServiceProvider && <CustomerProviderAcceptedModal provider={acceptedServiceProvider} onClose={onCloseAcceptedServiceRequest} />}
   </section>
+}
+
+function WNPocketModal({ profile, balance, activity, onOpenCashInHandPayment, onClose }) {
+  const [verified, setVerified] = useState(false)
+  const [demoOtp, setDemoOtp] = useState('')
+  const [enteredOtp, setEnteredOtp] = useState('')
+  const [otpError, setOtpError] = useState('')
+  const [activeView, setActiveView] = useState('overview')
+  const [amount, setAmount] = useState('')
+  const [paymentApp, setPaymentApp] = useState('PhonePe')
+  const [actionMessage, setActionMessage] = useState('')
+  const mobileDigits = String(profile?.mobile || '').replace(/\D/g, '')
+  const maskedMobile = mobileDigits.length >= 4 ? `•••• ••• ${mobileDigits.slice(-4)}` : 'your registered mobile number'
+  const amountValue = Number(amount) || 0
+  const formatWalletAmount = (value) => `${value < 0 ? '-' : ''}₹${Math.abs(value).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`
+
+  const sendDemoOtp = () => {
+    setDemoOtp(String(Math.floor(100000 + Math.random() * 900000)))
+    setEnteredOtp('')
+    setOtpError('')
+  }
+
+  const verifyDemoOtp = (event) => {
+    event.preventDefault()
+    if (enteredOtp !== demoOtp) {
+      setOtpError('The code does not match. Please try again.')
+      return
+    }
+    setVerified(true)
+    setOtpError('')
+  }
+
+  const selectView = (view) => {
+    setActiveView(view)
+    setAmount('')
+    setActionMessage('')
+  }
+
+  const startExternalPayment = (event) => {
+    event.preventDefault()
+    setActionMessage(`${paymentApp} payment connection is a preview. No payment has been started.`)
+  }
+
+  return <div className="modal-backdrop" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
+    <section className="modal wnpocket-modal" role="dialog" aria-modal="true" aria-labelledby="wnpocket-title">
+      <button className="close-button" type="button" onClick={onClose} aria-label="Close WNPocket"><X size={20} /></button>
+      <div className="wnpocket-heading">
+        <div><p className="eyebrow">Service Provider Wallet</p><h2 id="wnpocket-title">WNPocket</h2></div>
+      </div>
+      {!verified ? <div className="wnpocket-otp-panel">
+        <h3>Verify your mobile to view your balance</h3>
+        <p>A one-time code will be sent to {maskedMobile} when SMS verification is connected.</p>
+        {!demoOtp ? <button className="primary-button" type="button" onClick={sendDemoOtp}>Preview mobile OTP</button> : <form className="wnpocket-form" onSubmit={verifyDemoOtp}>
+          <label>Mobile OTP<input type="text" inputMode="numeric" pattern="[0-9]{6}" maxLength="6" required value={enteredOtp} onChange={(event) => { setEnteredOtp(event.target.value.replace(/\D/g, '')); setOtpError('') }} placeholder="Enter 6-digit code" /></label>
+          <p className="wnpocket-demo-code">Demo OTP: <strong>{demoOtp}</strong></p>
+          <button className="primary-button" type="submit">Verify and view wallet</button>
+          {otpError && <p className="wnpocket-error" role="alert">{otpError}</p>}
+        </form>}
+        <p className="wnpocket-preview-note">UI preview only: this code is generated in the browser. Real SMS delivery and server-side OTP verification are required for secure access.</p>
+      </div> : <>
+        <div className="wnpocket-balance-card">
+          <span>Preview available balance</span>
+          <strong>{formatWalletAmount(balance)}</strong>
+          <small>{balance < 0 ? 'Cash-in-Hand platform fees are reflected in this local preview balance.' : 'Live wallet balances will appear after the wallet service is connected.'}</small>
+        </div>
+        <nav className="wnpocket-tabs" aria-label="WNPocket actions">
+          {[['overview', 'Overview'], ['top-up', 'Top up'], ['withdraw', 'Withdraw'], ['cash-in-hand', 'Cash-in-Hand fees']].map(([view, label]) => <button key={view} type="button" className={activeView === view ? 'active' : ''} aria-pressed={activeView === view} onClick={() => selectView(view)}>{label}</button>)}
+        </nav>
+        {activeView === 'overview' && <div className="wnpocket-content">
+          <section className="wnpocket-info-card"><h3>Wallet activity</h3>{activity.length === 0 ? <p className="wnpocket-empty">No wallet transactions are available yet.</p> : <div className="wnpocket-activity-list">{activity.map((transaction) => <article className="wnpocket-activity-item" key={transaction.id}><div><strong>Cash-in-Hand platform fee</strong><span>Service amount {formatWalletAmount(transaction.serviceAmount)}{transaction.customerName ? ` · ${transaction.customerName}` : ''}</span><time dateTime={transaction.createdAt}>{new Date(transaction.createdAt).toLocaleString()}</time></div><strong className="wnpocket-activity-debit">-{formatWalletAmount(transaction.feeAmount)}</strong></article>)}</div>}</section>
+        </div>}
+        {activeView === 'top-up' && <form className="wnpocket-form" onSubmit={startExternalPayment}>
+          <h3>Top up WNPocket</h3>
+          <label>Amount (INR)<input type="number" min="1" step="0.01" required value={amount} onChange={(event) => { setAmount(event.target.value); setActionMessage('') }} placeholder="Enter top-up amount" /></label>
+          <label>Payment app<select value={paymentApp} onChange={(event) => setPaymentApp(event.target.value)}><option>PhonePe</option><option>Paytm</option><option>Other UPI app</option></select></label>
+          <button className="primary-button" type="submit" disabled={amountValue <= 0}>Continue with {paymentApp}</button>
+          {actionMessage && <p className="wnpocket-status" role="status">{actionMessage}</p>}
+        </form>}
+        {activeView === 'withdraw' && <form className="wnpocket-form" onSubmit={startExternalPayment}>
+          <h3>Withdraw from WNPocket</h3>
+          <p>Withdrawable preview balance: {formatWalletAmount(balance)}</p>
+          <label>Amount (INR)<input type="number" min="1" step="0.01" required value={amount} onChange={(event) => { setAmount(event.target.value); setActionMessage('') }} placeholder="Enter withdrawal amount" /></label>
+          <label>Send to<select value={paymentApp} onChange={(event) => setPaymentApp(event.target.value)}><option>PhonePe</option><option>Paytm</option><option>Other UPI app</option></select></label>
+          <button className="primary-button" type="submit" disabled={amountValue <= 0 || amountValue > balance}>Continue with {paymentApp}</button>
+          <p className="wnpocket-empty">Withdrawals are unavailable until a wallet balance is received.</p>
+          {actionMessage && <p className="wnpocket-status" role="status">{actionMessage}</p>}
+        </form>}
+        {activeView === 'cash-in-hand' && <div className="wnpocket-form">
+          <h3>Cash-in-Hand platform fee</h3>
+          <p>When you record a completed Cash-in-Hand service, its platform fee is calculated and automatically deducted from WNPocket.</p>
+          <div className="wnpocket-fee-summary"><span>Deduction timing</span><strong>At payment completion</strong></div>
+          <button className="primary-button" type="button" onClick={onOpenCashInHandPayment}>Record Cash-in-Hand payment <ArrowRight size={18} /></button>
+          <p className="wnpocket-preview-note">This UI preview records the fee in local wallet activity. A connected wallet service will post the real deduction.</p>
+        </div>}
+      </>}
+    </section>
+  </div>
+}
+
+function ProviderIncomingRequestModal({ request, playSound = true, onAccept, onCancel }) {
+  const [isOpen, setIsOpen] = useState(true)
+  useEffect(() => {
+    if (playSound) playRequestAlertTone()
+  }, [playSound])
+  if (!isOpen) return null
+  return <div className="request-alert-backdrop" role="presentation">
+    <section className="request-alert-dialog" role="alertdialog" aria-modal="true" aria-labelledby="incoming-request-title">
+      <p className="eyebrow">New service request</p>
+      <h2 id="incoming-request-title">A customer needs your service</h2>
+      <dl className="request-alert-details">
+        <div><dt>Customer Name</dt><dd>{request.customerName}</dd></div>
+        <div><dt>Customer Address</dt><dd>{request.customerAddress}</dd></div>
+      </dl>
+      <div className="request-alert-actions">
+        <button type="button" className="request-alert-cancel" onClick={() => { onCancel?.(); setIsOpen(false) }}>Cancel</button>
+        <button type="button" className="request-alert-accept" onClick={() => { onAccept?.(); setIsOpen(false) }}>Accept</button>
+      </div>
+    </section>
+  </div>
+}
+
+function CustomerProviderAcceptedModal({ provider, onClose }) {
+  const [isOpen, setIsOpen] = useState(true)
+  if (!isOpen) return null
+  return <div className="request-alert-backdrop" role="presentation">
+    <section className="request-alert-dialog" role="dialog" aria-modal="true" aria-labelledby="provider-accepted-title">
+      <button className="close-button" type="button" onClick={() => { onClose?.(); setIsOpen(false) }} aria-label="Close provider details"><X size={20} /></button>
+      <p className="eyebrow">Request accepted</p>
+      <h2 id="provider-accepted-title">A Service Provider has accepted your request</h2>
+      <dl className="request-alert-details">
+        <div><dt>Service Provider Name</dt><dd>{provider.name}</dd></div>
+        <div><dt>Service Provider Address</dt><dd>{provider.address}</dd></div>
+      </dl>
+      <p className="request-accepted-note">The Service Provider has received your request. Service Provider: {provider.name}. The Service Provider will contact you shortly by phone.</p>
+      <div className="request-alert-actions"><button type="button" className="request-alert-accept" onClick={() => { onClose?.(); setIsOpen(false) }}>Got it</button></div>
+    </section>
+  </div>
+}
+
+function CustomerRequestProgress({ status, onRetry }) {
+  if (status === 'exhausted') return <div className="request-progress exhausted" role="alert">
+    <p>All our Service Providers are currently busy. Please try again later.</p>
+    <button type="button" onClick={onRetry}>Try again</button>
+  </div>
+  if (status === 'contacting-next') return <div className="request-progress" role="status"><span className="request-progress-spinner" aria-hidden="true" /><p>The provider is unavailable. We’re contacting the next nearby Service Provider.</p></div>
+  if (status === 'cancelled') return <div className="request-progress" role="status"><p>Your service request was cancelled.</p></div>
+  return <div className="request-progress" role="status"><span className="request-progress-spinner" aria-hidden="true" /><p>Looking for the nearest available Service Provider within 20 km.</p></div>
 }
 
 function ServiceHistoryModal({ accountType, onClose }) {
@@ -1679,9 +1870,7 @@ function ServiceHistoryModal({ accountType, onClose }) {
   const latestHistoryDate = toDateInputValue(new Date())
   const [historyStartDate, setHistoryStartDate] = useState(getSixMonthsAgo)
   const [historyEndDate, setHistoryEndDate] = useState(() => toDateInputValue(new Date()))
-  const visibleHistory = profilePreviewHistory
-    .filter((record) => record.date >= historyStartDate && record.date <= historyEndDate)
-    .sort((first, second) => second.date.localeCompare(first.date))
+  const visibleHistory = []
 
   return <div className="modal-backdrop" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
     <section className="modal service-history-modal" role="dialog" aria-modal="true" aria-labelledby="service-history-title">
@@ -1692,7 +1881,6 @@ function ServiceHistoryModal({ accountType, onClose }) {
       </div>
       <p className="modal-intro">Review completed services associated with your profile.</p>
       <div className="service-history-content">
-        <p className="service-history-sample">Sample records</p>
         <div className="service-history-dates">
           <label>Start date<input type="date" value={historyStartDate} min={earliestHistoryDate} max={historyEndDate || latestHistoryDate} onChange={(event) => setHistoryStartDate(event.target.value)} /></label>
           <label>End date<input type="date" value={historyEndDate} min={historyStartDate || earliestHistoryDate} max={latestHistoryDate} onChange={(event) => setHistoryEndDate(event.target.value)} /></label>
@@ -1784,7 +1972,7 @@ function ProfileRequestActions({ role, serviceAmount, onServiceAmountChange, ser
     <p>{message}</p>
     <div className={isProvider ? 'profile-request-buttons provider' : 'profile-request-buttons'}>
       {isProvider ? <>
-        <button type="button" className="profile-request-accept" disabled title={providerDisabledReason}>Accept</button>
+        <button type="button" className="profile-request-accept" disabled title={providerDisabledReason}>Accepted Service List</button>
         <button type="button" className="profile-request-call" disabled title={providerDisabledReason}>Call with Customer</button>
       </> : <>
         <button type="button" disabled={!customerCanReviewOffer || Boolean(decision)} onClick={() => setDecision('approved')}>Approve</button>
@@ -1805,7 +1993,7 @@ function ProfileRequestActions({ role, serviceAmount, onServiceAmountChange, ser
   </section>
 }
 
-function RegistrationModal({ type, submitted, setSubmitted, onSignedIn, onSignOut, onClose, initialAdminView, onAdminSuccess, onAdminViewChange }) {
+function RegistrationModal({ type, submitted, setSubmitted, requesterProfile, onSignedIn, onClose, initialAdminView, initialPaymentScenario = 'customer-to-app', onCashInHandPaymentComplete, onAdminSuccess, onAdminViewChange }) {
   const isLabour = type === 'labour'
   const isContact = type === 'contact'
   const isFeedback = type === 'feedback'
@@ -1818,9 +2006,12 @@ function RegistrationModal({ type, submitted, setSubmitted, onSignedIn, onSignOu
   const [selectedMusicianType, setSelectedMusicianType] = useState('')
   const [selectedMultiServices, setSelectedMultiServices] = useState([])
   const [selectedFarmLaborTask, setSelectedFarmLaborTask] = useState('')
-  const [customerName, setCustomerName] = useState('')
-  const [providerName, setProviderName] = useState('')
-  const [customerNeed, setCustomerNeed] = useState('')
+  const [customerName, setCustomerName] = useState(() => isPayment ? '' : requesterProfile?.fullName || '')
+  const [customerAddress, setCustomerAddress] = useState(() => [requesterProfile?.village, requesterProfile?.mandal, requesterProfile?.division].filter(Boolean).join(', '))
+  const [customerCoordinates, setCustomerCoordinates] = useState('')
+  const [customerLocationError, setCustomerLocationError] = useState('')
+  const [customerRequestStatus, setCustomerRequestStatus] = useState('searching')
+  const [providerName, setProviderName] = useState(() => requesterProfile?.profileType === 'Service Provider' ? requesterProfile.fullName || '' : '')
   const [isListening, setIsListening] = useState(false)
   const [listeningTarget, setListeningTarget] = useState('')
   const [voiceError, setVoiceError] = useState('')
@@ -1831,14 +2022,27 @@ function RegistrationModal({ type, submitted, setSubmitted, onSignedIn, onSignOu
   const [captchaCode, setCaptchaCode] = useState(() => Math.random().toString(36).slice(2, 7).toUpperCase())
   const [captchaError, setCaptchaError] = useState('')
   const [otpError, setOtpError] = useState('')
-  const [amount, setAmount] = useState('2500')
-  const [paymentScenario, setPaymentScenario] = useState('customer-to-app')
-  const [paymentMethod, setPaymentMethod] = useState('QR scan')
+  const [amount, setAmount] = useState('')
+  const [paymentScenario, setPaymentScenario] = useState(initialPaymentScenario)
+  const [paymentMethod, setPaymentMethod] = useState(initialPaymentScenario === 'provider-to-app' ? 'Cash in hand' : 'QR scan')
 
   const refreshCaptcha = () => {
     setCaptchaCode(Math.random().toString(36).slice(2, 7).toUpperCase())
     setCaptchaAnswer('')
     setCaptchaError('')
+  }
+
+  const captureCustomerLocation = () => {
+    if (!navigator.geolocation) {
+      setCustomerLocationError('Location access is not available in this browser. Enter the address manually.')
+      return
+    }
+    setCustomerLocationError('')
+    navigator.geolocation.getCurrentPosition((position) => {
+      setCustomerCoordinates(`${position.coords.latitude.toFixed(6)}, ${position.coords.longitude.toFixed(6)}`)
+    }, () => {
+      setCustomerLocationError('Could not get your location. Enter the address manually.')
+    }, { enableHighAccuracy: true, timeout: 10000 })
   }
 
   useEffect(() => {
@@ -1851,7 +2055,7 @@ function RegistrationModal({ type, submitted, setSubmitted, onSignedIn, onSignOu
     return () => recognitionRef.current?.stop()
   }, [])
 
-  const startVoiceInput = (target = 'description') => {
+  const startVoiceInput = (target) => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
     if (!SpeechRecognition) {
       setVoiceError('Voice input is not supported in this browser.')
@@ -1899,9 +2103,6 @@ function RegistrationModal({ type, submitted, setSubmitted, onSignedIn, onSignOu
           } else {
             setVoiceError('No matching option heard. Please try again or choose from the list.')
           }
-        } else {
-          setCustomerNeed(transcript)
-          setVoiceError('')
         }
       }
     }
@@ -1932,9 +2133,10 @@ function RegistrationModal({ type, submitted, setSubmitted, onSignedIn, onSignOu
   const activeScenarioMethods = paymentScenarios.find((scenario) => scenario.id === paymentScenario)?.methods || []
   const customerPays = paymentScenario === 'customer-to-app' || paymentScenario === 'provider-to-app' ? numericAmount : 0
   const appCollects = paymentScenario === 'customer-to-app' ? appCommission : paymentScenario === 'provider-to-app' ? appCommission : 0
-  const providerReceives = paymentScenario === 'customer-to-app' || paymentScenario === 'provider-to-app' ? providerPayout : 0
+  const providerReceives = paymentScenario === 'customer-to-app' ? providerPayout : paymentScenario === 'provider-to-app' ? numericAmount : 0
+  const isWalletCashInHandPayment = isPayment && paymentScenario === 'provider-to-app' && paymentMethod === 'Cash in hand' && requesterProfile?.profileType === 'Service Provider' && numericAmount > 0
   const customerPaysLabel = paymentScenario === 'customer-to-app' ? 'Customer pays → Platform' : 'Customer pays → Service Provider'
-  const settlementLabel = paymentScenario === 'customer-to-app' ? 'Platform pays → Service Provider' : 'Service Provider pays → Platform'
+  const settlementLabel = paymentScenario === 'customer-to-app' ? 'Platform pays → Service Provider' : isWalletCashInHandPayment ? 'Automatic WNPocket deduction' : 'Service Provider pays → Platform'
   const settlementAmount = paymentScenario === 'customer-to-app' ? providerPayout : appCommission
   const handleAdminBack = () => {
     if (adminOtpStep) {
@@ -1947,12 +2149,12 @@ function RegistrationModal({ type, submitted, setSubmitted, onSignedIn, onSignOu
   }
 
   return <div className="modal-backdrop" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
-    <section className={isAdmin ? 'modal admin-modal' : 'modal'} role="dialog" aria-modal="true" aria-labelledby="modal-title">
+    <section className={isAdmin ? 'modal admin-modal' : 'modal'} role="dialog" aria-modal="true" aria-labelledby="modal-title" onSubmitCapture={() => { if (isWalletCashInHandPayment) onCashInHandPaymentComplete?.({ amount: numericAmount, customerName }) }}>
       {!isAdmin && <button className="close-button" onClick={onClose} aria-label="Close registration form"><X size={20} /></button>}
       {submitted ? <div className="success-state admin-dashboard">
         <span className="success-icon"><Check size={26} /></span>
-        <p className="eyebrow">{isPayment ? 'Payment complete' : isAdmin ? 'Admin dashboard' : isFeedback ? 'Feedback received' : isContact ? 'Message received' : 'You’re on the list'}</p>
-        <h2>{isPayment ? 'Payment exchange success' : isAdmin ? 'Hello, Admin.' : isFeedback ? 'Thanks for your feedback.' : isContact ? 'Thanks for contacting us.' : 'Thanks for reaching out.'}</h2>
+        <p className="eyebrow">{isPayment ? 'Payment complete' : isAdmin ? 'Admin dashboard' : isFeedback ? 'Feedback received' : isContact ? 'Message received' : isCustomer ? 'Request submitted' : 'You’re on the list'}</p>
+        <h2>{isPayment ? 'Payment exchange success' : isAdmin ? 'Hello, Admin.' : isFeedback ? 'Thanks for your feedback.' : isContact ? 'Thanks for contacting us.' : isCustomer ? 'We’re finding a nearby Service Provider' : 'Thanks for reaching out.'}</h2>
         {isPayment ? <div className="payment-summary">
           <div><span>Flow</span><strong>{paymentScenarios.find((scenario) => scenario.id === paymentScenario)?.label}</strong></div>
           <div><span>Method</span><strong>{paymentMethod}</strong></div>
@@ -1960,7 +2162,15 @@ function RegistrationModal({ type, submitted, setSubmitted, onSignedIn, onSignOu
           <div><span>Provider receives</span><strong>₹{providerReceives.toLocaleString('en-IN')}</strong></div>
           <div><span>Platform fee</span><strong>₹{appCollects.toLocaleString('en-IN')}</strong></div>  
           <div><span>{settlementLabel}</span><strong>₹{settlementAmount.toLocaleString('en-IN')}</strong></div>
-        </div> : isAdmin ? <AdminDashboard initialView={initialAdminView} onViewChange={onAdminViewChange} onSignOut={onSignOut} onHome={onClose} /> : <p>{isFeedback ? 'Your thoughts help us improve the local work board.' : isContact ? 'We’ve received your message and will get back to you shortly.' : 'We’ve received your details and will be in touch shortly.'}</p>}
+        </div> : isAdmin ? <AdminDashboard initialView={initialAdminView} onViewChange={onAdminViewChange} onHome={onClose} /> : isCustomer ? <div className="request-submitted-summary" role="status">
+          <p>A nearby active Service Provider will be notified. You’ll see their name and address here after they accept.</p>
+          <CustomerRequestProgress status={customerRequestStatus} onRetry={() => { setCustomerRequestStatus('searching'); setSubmitted(false) }} />
+          <dl className="request-alert-details">
+            <div><dt>Customer Name</dt><dd>{customerName}</dd></div>
+            <div><dt>Customer Address</dt><dd>{customerAddress}</dd></div>
+            {customerCoordinates && <div><dt>Location coordinates</dt><dd>{customerCoordinates}</dd></div>}
+          </dl>
+        </div> : <p>{isFeedback ? 'Your thoughts help us improve the local work board.' : isContact ? 'We’ve received your message and will get back to you shortly.' : 'We’ve received your details and will be in touch shortly.'}</p>}
         {!isAdmin && <button className="primary-button" onClick={onClose}>Back to home <ArrowRight size={18} /></button>}
       </div> : <><p className="eyebrow">{isPayment ? 'Secure transfer' : isAdmin ? adminOtpStep ? 'Mobile verification' : 'Secure access' : isFeedback ? 'Help us improve' : isContact ? 'Get in touch' : isLabour }</p><h2 id="modal-title">{isPayment ? 'Payment Exchange' : isAdmin ? adminOtpStep ? 'Enter your OTP' : 'Admin login' : isFeedback ? 'Tell us what you think' : isContact ? 'How can we help?' : isLabour ? 'Register as a service provider' : 'Tell us what you need'}</h2><p className="modal-intro">{isPayment ? 'Choose the payment flow, method, and commission split for a customer and service provider transaction.' : isAdmin ? adminOtpStep ? 'Enter the one-time password sent to your registered mobile number.' : 'Sign in with your email, password, and CAPTCHA to continue.' : isFeedback ? 'Share a quick rating and note about your experience.' : isContact ? 'Send us a note and our team will respond shortly.' : isLabour ? 'Share a few details and start finding work near you.' : 'We’ll help you connect with a trusted professional nearby.'}</p><form onSubmit={(event) => { event.preventDefault(); if (isAdmin && !adminOtpStep) { if (captchaAnswer.trim().toUpperCase() !== captchaCode) { setCaptchaError('CAPTCHA does not match.'); return } setAdminOtpStep(true); return } if (isAdmin && !/^\d{6}$/.test(adminOtp)) { setOtpError('Enter the 6-digit OTP sent to your mobile.'); return } if (!isLabour && !isContact && !isFeedback && !isPayment) onSignedIn(); if (isAdmin) onAdminSuccess(); setSubmitted(true) }}>
         {isPayment ? <>
@@ -1972,8 +2182,8 @@ function RegistrationModal({ type, submitted, setSubmitted, onSignedIn, onSignOu
           }}><option value="" disabled>Select a scenario</option>{paymentScenarios.map((scenario) => <option key={scenario.id} value={scenario.id}>{scenario.label}</option>)}</select><ChevronDown className="select-icon" size={16} /></label>
           <label>Payment method<select required value={paymentMethod} onChange={(event) => setPaymentMethod(event.target.value)}><option value="" disabled>Select a method</option>{activeScenarioMethods.map((method) => <option key={method} value={method}>{method}</option>)}</select><ChevronDown className="select-icon" size={16} /></label>
           <label>Customer name<input required type="text" value={customerName} onChange={(event) => setCustomerName(event.target.value)} placeholder="e.g. Arjun Reddy" /></label>
-          <label>Service provider name<input required type="text" value={providerName} onChange={(event) => setProviderName(event.target.value)} placeholder="e.g. Suresh Kumar" /></label>
-          <label>Service amount<input required type="number" min="0" step="1" value={amount} onChange={(event) => setAmount(event.target.value)} placeholder="2500" /></label>
+          <label>Service provider name<input required type="text" value={providerName} readOnly={requesterProfile?.profileType === 'Service Provider'} onChange={(event) => setProviderName(event.target.value)} placeholder="Enter service provider name" /></label>
+          <label>Service amount<input required type="number" min="0" step="1" value={amount} onChange={(event) => setAmount(event.target.value)} placeholder="Enter service amount" /></label>
           {(paymentScenario === 'customer-to-app' || paymentScenario === 'provider-to-app') && <label>App commission (%)<input required type="number" value={commissionRate} readOnly /></label>}
           <div className="payment-breakdown">
             <div><span>{customerPaysLabel}</span><strong>₹{customerPays.toLocaleString('en-IN')}</strong></div>
@@ -1982,7 +2192,7 @@ function RegistrationModal({ type, submitted, setSubmitted, onSignedIn, onSignOu
             <div><span>{settlementLabel}</span><strong>₹{settlementAmount.toLocaleString('en-IN')}</strong></div>
           </div>
         </> : isAdmin && !adminOtpStep ? <>
-          <label>Admin email<input required type="email" placeholder="admin@worknear.in" /></label>
+          <label>Admin email<input required type="email" placeholder="Enter your admin email" /></label>
           <label>Password<input required type="password" placeholder="Enter password" /></label>
           <div className="captcha-field"><div className="captcha-code-row"><strong>{captchaCode}</strong><button className="captcha-refresh" type="button" onClick={refreshCaptcha} aria-label="Refresh CAPTCHA" title="Refresh CAPTCHA"><RefreshCw size={15} /></button></div><input required type="text" value={captchaAnswer} onChange={(event) => { setCaptchaAnswer(event.target.value); setCaptchaError('') }} placeholder="Enter CAPTCHA" aria-label="Enter CAPTCHA" />{captchaError && <small>{captchaError}</small>}</div>
         </> : isAdmin ? <>
@@ -2004,7 +2214,15 @@ function RegistrationModal({ type, submitted, setSubmitted, onSignedIn, onSignOu
           {selectedService === 'Marriage & Other Functions Service Providers' && <label>Marriage/function specialist<select required value={selectedSpecialty} onChange={(event) => { setSelectedSpecialty(event.target.value); setSelectedMusicianType(''); setSelectedMultiServices([]) }}><option value="" disabled>Select a specialization</option>{marriageFunctionSpecialists.map((item) => <option key={item.name} value={item.value || item.name} disabled={item.divider}>{item.divider ? item.name : `${item.name} → ${item.description}`}</option>)}<option value="Multi-Select">★ Multi-Select Option</option></select><ChevronDown className="select-icon" size={16} /></label>}
           {selectedService === 'Marriage & Other Functions Service Providers' && selectedSpecialty === 'Multi-Select' && <fieldset className="service-multiselect"><legend>Service types</legend>{marriageFunctionSpecialists.filter((item) => !item.divider && item.value !== 'Specialist').map((item, index) => <label className="service-multiselect-option" key={item.name}><input type="checkbox" checked={selectedMultiServices.includes(item.name)} required={selectedMultiServices.length === 0 && index === 0} onChange={(event) => { const isChecked = event.target.checked; setSelectedMultiServices((current) => isChecked ? [...current, item.name] : current.filter((service) => service !== item.name)); if (item.name === 'Musicians' && !isChecked) setSelectedMusicianType('') }} /><span>{item.name}</span></label>)}</fieldset>}
           {selectedService === 'Marriage & Other Functions Service Providers' && (selectedSpecialty === 'Musicians' || (selectedSpecialty === 'Multi-Select' && selectedMultiServices.includes('Musicians'))) && <label>Choose a music type<select required value={selectedMusicianType} onChange={(event) => setSelectedMusicianType(event.target.value)}><option value="" disabled>Select a music type</option>{musicianTypes.map((type) => <option key={type} value={type}>{type}</option>)}</select><ChevronDown className="select-icon" size={16} /></label>}
-        </> : isContact ? <><label>Customer care numbers<div className="customer-care-list"><a href="tel:+919876543210">+91 98765 43210</a><a href="tel:+919123456789">+91 91234 56789</a></div></label><label>Your message<textarea required placeholder="Tell us how we can help" /></label></> : isFeedback ? <><label>How would you rate your experience?<select required defaultValue=""><option value="" disabled>Select a rating</option><option>Excellent</option><option>Good</option><option>Needs improvement</option></select><ChevronDown className="select-icon" size={16} /></label><label>Your feedback<textarea required placeholder="Share your thoughts" /></label></> : isCustomer ? <>
+        </> : isContact ? <><label>Your message<textarea required placeholder="Tell us how we can help" /></label></> : isFeedback ? <><label>How would you rate your experience?<select required defaultValue=""><option value="" disabled>Select a rating</option><option>Excellent</option><option>Good</option><option>Needs improvement</option></select><ChevronDown className="select-icon" size={16} /></label><label>Your feedback<textarea required placeholder="Share your thoughts" /></label></> : isCustomer ? <>
+          <label>Customer Name<input required type="text" value={customerName} onChange={(event) => setCustomerName(event.target.value)} placeholder="Enter your name" /></label>
+          <label>Customer Address<textarea required rows="2" value={customerAddress} onChange={(event) => setCustomerAddress(event.target.value)} placeholder="Enter the service location address" /></label>
+          <div className="request-location-tools">
+            <button type="button" className="location-button" onClick={captureCustomerLocation}>Use my current location</button>
+            {customerCoordinates && <small>Location captured: {customerCoordinates}</small>}
+            {customerLocationError && <small className="voice-error">{customerLocationError}</small>}
+            <small>Share the service location so the nearest available provider can be identified.</small>
+          </div>
           <label>What do you need help with?<div className="voice-select-row"><select required value={selectedService} onChange={(event) => { setSelectedService(event.target.value); setSelectedSpecialty(''); setSelectedMusicianType(''); setSelectedMultiServices([]); setSelectedFarmLaborTask(''); setVoiceError('') }}><option value="" disabled>Select a service</option>{labourTypes.map((item) => <option key={item} value={item}>{item}</option>)}</select><ChevronDown className="select-icon" size={16} /><button className={isListening && listeningTarget === 'service' ? 'voice-button listening' : 'voice-button'} type="button" onClick={() => startVoiceInput('service')} aria-label="Choose a service by voice" title="Choose a service by voice">{isListening && listeningTarget === 'service' ? <MicOff size={16} /> : <Mic size={16} />}</button></div></label>
           {selectedService && <label>Choose a service type<div className="voice-select-row"><select required value={selectedSpecialty} onChange={(event) => { setSelectedSpecialty(event.target.value); setSelectedMusicianType(''); setSelectedMultiServices([]); setSelectedFarmLaborTask(''); setVoiceError('') }}><option value="" disabled>Select a service type</option>{getSpecialistOptions(selectedService).map((item) => <option key={item.value} value={item.value} disabled={item.disabled}>{item.disabled ? item.label : item.description ? `${item.label} → ${item.description}` : item.label}</option>)}{selectedService === 'Marriage & Other Functions Service Providers' && <option value="Multi-Select">★ Multi-Select Option</option>}</select><ChevronDown className="select-icon" size={16} /><button className={isListening && listeningTarget === 'specialty' ? 'voice-button listening' : 'voice-button'} type="button" onClick={() => startVoiceInput('specialty')} aria-label="Choose a service type by voice" title="Choose a service type by voice">{isListening && listeningTarget === 'specialty' ? <MicOff size={16} /> : <Mic size={16} />}</button></div></label>}
           {selectedService === 'Farming Service Providers' && selectedSpecialty === 'Multi-Select' && <fieldset className="service-multiselect"><legend>Service types</legend>{farmingSpecialists.filter((item) => !item.divider && item.value !== 'Multi-Select').map((item, index) => <label className="service-multiselect-option" key={item.name}><input type="checkbox" checked={selectedMultiServices.includes(item.name)} required={selectedMultiServices.length === 0 && index === 0} onChange={(event) => { const isChecked = event.target.checked; setSelectedMultiServices((current) => isChecked ? [...current, item.name] : current.filter((service) => service !== item.name)); if (item.name === 'Farm Laborers' && !isChecked) setSelectedFarmLaborTask('') }} /><span>{item.name}</span></label>)}</fieldset>}
@@ -2012,8 +2230,7 @@ function RegistrationModal({ type, submitted, setSubmitted, onSignedIn, onSignOu
           {isCustomer && selectedService === 'Marriage & Other Functions Service Providers' && selectedSpecialty === 'Multi-Select' && <fieldset className="service-multiselect"><legend>Service types</legend>{marriageFunctionSpecialists.filter((item) => !item.divider && item.value !== 'Specialist').map((item, index) => <label className="service-multiselect-option" key={item.name}><input type="checkbox" checked={selectedMultiServices.includes(item.name)} required={selectedMultiServices.length === 0 && index === 0} onChange={(event) => { const isChecked = event.target.checked; setSelectedMultiServices((current) => isChecked ? [...current, item.name] : current.filter((service) => service !== item.name)); if (item.name === 'Musicians' && !isChecked) setSelectedMusicianType('') }} /><span>{item.name}</span></label>)}</fieldset>}
           {(selectedSpecialty === 'Musicians' || (isCustomer && selectedService === 'Marriage & Other Functions Service Providers' && selectedSpecialty === 'Multi-Select' && selectedMultiServices.includes('Musicians'))) && <label>Choose a music type<select required value={selectedMusicianType} onChange={(event) => setSelectedMusicianType(event.target.value)}><option value="" disabled>Select a music type</option>{musicianTypes.map((type) => <option key={type} value={type}>{type}</option>)}</select><ChevronDown className="select-icon" size={16} /></label>}
           {voiceError && <small className="voice-error">{voiceError}</small>}
-        </> : !isAdmin && !isPayment && <label className="voice-field">What do you need help with?<div className="voice-input-row"><input required type="text" value={customerNeed} onChange={(event) => { setCustomerNeed(event.target.value); setVoiceError('') }} placeholder="e.g. Fix a leaking tap" /><button className={isListening ? 'voice-button listening' : 'voice-button'} type="button" onClick={startVoiceInput} aria-label="Use voice command" title="Use voice command">{isListening ? <MicOff size={16} /> : <Mic size={16} />}</button></div>{voiceError && <small>{voiceError}</small>}</label>}
-        {!isFeedback && !isAdmin && !isPayment && !isCustomer && null}
+        </> : null}
         <button className="primary-button form-submit" type="submit">{isPayment ? 'Process payment' : isAdmin ? adminOtpStep ? 'Verify OTP' : 'Continue to OTP' : isFeedback ? 'Send feedback' : isContact ? 'Send message' : isLabour ? 'Create my profile' : 'Find a professional'} <ArrowRight size={18} /></button>
         {isAdmin && <button className="signin-back" type="button" onClick={handleAdminBack}>&lt;- Back</button>}
       </form></>}
@@ -2108,8 +2325,16 @@ function SortableTableHeader({ columns, sort, onSort }) {
   })}</tr></thead>
 }
 
-function AdminDashboard({ initialView = 'providers', onViewChange, onSignOut, onHome }) {
+function AdminDashboard({ initialView = 'providers', onViewChange, onHome }) {
   const employers = readEmployerProfiles()
+  const customers = readRegisteredProfiles()
+    .filter((profile) => profile?.profileType === 'Customer')
+    .map((profile, index) => ({
+      id: normalizeMobileNumber(profile.mobile) || `${profile.fullName || 'customer'}-${index}`,
+      name: profile.fullName || 'Customer',
+      mobile: profile.mobile || '',
+      address: profile.address || [profile.village, profile.mandal, profile.division].filter(Boolean).join(', ') || 'Not provided yet',
+    }))
   const [adminView, setAdminView] = useState(initialView)
   const [activeProviderSort, setActiveProviderSort] = useState({ key: 'name', direction: 'asc' })
   const [accessProviderSort, setAccessProviderSort] = useState({ key: 'name', direction: 'asc' })
@@ -2117,19 +2342,15 @@ function AdminDashboard({ initialView = 'providers', onViewChange, onSignOut, on
   const [activeProviderSearch, setActiveProviderSearch] = useState('')
   const [accessProviderSearch, setAccessProviderSearch] = useState('')
   const [pendingProviderSearch, setPendingProviderSearch] = useState('')
-  const [providers, setProviders] = useState([
-    { id: 1, name: 'Suresh Kumar', mobile: '90000 12345', address: 'Atmakur, Nellore', service: 'Electricians', customer: 'Lakshmi Reddy', customerMobile: '91234 56789', customerAddress: 'Atmakur, Nellore', serviceStatus: 'In-Progress', paymentStatus: 'Resolved - Payment pending with customer', paymentDate: null, amount: 2500, status: 'Active', blocked: false, comment: 'Active for new electrical work.', accessAdmin: null },
-    { id: 2, name: 'Ravi Naidu', mobile: '90000 67890', address: 'Marripadu, Nellore', service: 'Plumbers', customer: 'Arjun Reddy', customerMobile: '92345 67890', customerAddress: 'Marripadu, Nellore', serviceStatus: 'Completed', paymentStatus: 'Resolved - Payment done by customer', paymentDate: '2026-09-29T10:30:00+05:30', amount: 1800, status: 'Active', blocked: false, comment: 'Verified provider.', accessAdmin: null },
-    { id: 5, name: 'Kiran Babu', mobile: '90555 11223', address: 'Vinjamur, Nellore', service: 'Construction Service Providers', customer: 'Meena Devi', customerMobile: '93456 78901', customerAddress: 'Vinjamur, Nellore', serviceStatus: 'Completed', paymentStatus: 'Resolved - Payment done by customer', paymentDate: '2026-09-28T14:15:00+05:30', amount: 2250, status: 'Active', blocked: true, comment: 'Temporarily unActive.', accessAdmin: { name: 'WorkNear Admin', mobile: '98765 43210' } },
-  ])
-  const [pendingProviders, setPendingProviders] = useState([
-    { id: 3, name: 'Mohan Rao', mobile: '90123 45678', address: 'Vinjamur, Nellore', service: 'Electricians', workPhoto: '/src/Workers.png', status: 'Inactive', approved: false, approval: null, requestDate: '2026-09-29T10:30:00+05:30' },
-    { id: 4, name: 'Anitha Devi', mobile: '90876 54321', address: 'Atmakur, Nellore', service: 'Painters', workPhoto: '/src/Service_Provider_Img.png', status: 'Inactive', approved: false, approval: null, requestDate: '2026-09-28T14:15:00+05:30' },
-  ])
+  const [providers, setProviders] = useState([])
+  const [pendingProviders, setPendingProviders] = useState([])
   const [editingId, setEditingId] = useState(null)
   const [editingAccessId, setEditingAccessId] = useState(null)
   const [confirmation, setConfirmation] = useState(null)
-  const [adminDetails] = useState({ name: 'WorkNear Admin', mobile: '98765 43210', email: 'admin@worknear.in' })
+  const adminDetails = { name: 'Admin', mobile: '' }
+  const activeProviderCount = providers.filter((provider) => provider.status === 'Active' && !provider.blocked).length
+  const inactiveProviderCount = providers.filter((provider) => provider.status !== 'Active').length + pendingProviders.filter((provider) => provider.status === 'Inactive').length
+  const blockedProviderCount = providers.filter((provider) => provider.blocked).length
 
   const activeProviderColumns = [
     { key: 'name', label: 'Service Provider Name', value: (provider) => provider.name || '', render: (provider) => <strong>{provider.name}</strong> },
@@ -2137,8 +2358,8 @@ function AdminDashboard({ initialView = 'providers', onViewChange, onSignOut, on
     { key: 'address', label: 'Address', value: (provider) => provider.address || '', render: (provider) => provider.address },
     { key: 'service', label: 'Services Knows', value: (provider) => provider.service || 'Service Provider', render: (provider) => provider.service || 'Service Provider' },
     { key: 'status', label: 'Profile Status', value: (provider) => provider.status || '', render: (provider) => <span className="table-status complete">{provider.status}</span> },
-    { key: 'adminName', label: 'Approved Admin Name', value: (provider) => provider.approval?.admin || provider.accessAdmin?.name || 'WorkNear Admin', render: (provider) => provider.approval?.admin || provider.accessAdmin?.name || 'WorkNear Admin' },
-    { key: 'adminMobile', label: 'Admin Mobile Number', value: (provider) => provider.approval?.mobile || provider.accessAdmin?.mobile || '98765 43210', render: (provider) => provider.approval?.mobile || provider.accessAdmin?.mobile || '98765 43210' },
+    { key: 'adminName', label: 'Approved Admin Name', value: (provider) => provider.approval?.admin || provider.accessAdmin?.name || '—', render: (provider) => provider.approval?.admin || provider.accessAdmin?.name || '—' },
+    { key: 'adminMobile', label: 'Admin Mobile Number', value: (provider) => provider.approval?.mobile || provider.accessAdmin?.mobile || '—', render: (provider) => provider.approval?.mobile || provider.accessAdmin?.mobile || '—' },
     { key: 'approvedAt', label: 'Approved Date & Time', value: (provider) => provider.approval?.date || '', sortType: 'date', render: (provider) => formatAdminApprovalDateTime(provider.approval?.date) },
   ]
   const sortedActiveProviders = sortAdminTableRows(filterAdminProviderRows(providers, activeProviderSearch), activeProviderColumns, activeProviderSort)
@@ -2161,9 +2382,9 @@ function AdminDashboard({ initialView = 'providers', onViewChange, onSignOut, on
   }
 
   const approveProvider = (provider) => {
-    const approval = { admin: adminDetails.name, mobile: adminDetails.mobile, email: adminDetails.email, date: new Date().toISOString() }
+    const approval = { admin: adminDetails.name, date: new Date().toISOString() }
     setPendingProviders((current) => current.filter((item) => item.id !== provider.id))
-    setProviders((current) => [...current, { ...provider, status: 'Active', approved: true, approval, customer: 'Pending', customerMobile: 'Pending', customerAddress: 'Pending', serviceStatus: 'Not Started', paymentStatus: 'Resolved - Payment pending with customer', paymentDate: null, amount: 0, blocked: false, comment: 'Approved provider.', accessAdmin: null }])
+    setProviders((current) => [...current, { ...provider, status: 'Active', approved: true, approval, blocked: false, accessAdmin: null }])
   }
 
   const updateAccessProvider = (id, field, value) => {
@@ -2216,11 +2437,11 @@ function AdminDashboard({ initialView = 'providers', onViewChange, onSignOut, on
 
   return <div className="admin-dashboard-content">
     <div className="admin-dashboard-header"><div><h3>{adminView === 'payments' ? 'Payment Status' : adminView === 'employers' ? 'Employers' : adminView === 'service-providers' ? 'Customers' : 'Service Providers Management'}</h3></div><div className="admin-dashboard-actions"><button className="admin-dashboard-link" type="button" onClick={() => adminView === 'providers' ? onHome?.() : changeAdminView('providers')} aria-label={adminView === 'providers' ? 'Back to home' : 'Back to Service Providers Management'}><ArrowLeft size={14} /> Back</button><button className="admin-dashboard-link" type="button" onClick={() => changeAdminView('payments')}>Payment Status</button><button className="admin-dashboard-link" type="button" onClick={() => changeAdminView('employers')}>Employers</button><button className="admin-dashboard-link" type="button" onClick={() => changeAdminView('service-providers')}>Customers</button></div></div>
-    {adminView === 'payments' ? <AdminPaymentStatus providers={providers} /> : adminView === 'employers' ? <AdminEmployers employers={employers} /> : adminView === 'service-providers' ? <AdminServiceProviders providers={providers} /> : <>
+    {adminView === 'payments' ? <AdminPaymentStatus providers={providers} /> : adminView === 'employers' ? <AdminEmployers employers={employers} /> : adminView === 'service-providers' ? <AdminServiceProviders customers={customers} /> : <>
     <div className="admin-dashboard-grid">
-      <div className="admin-stat"><strong>3</strong><span>Active Service Providers</span></div>
-      <div className="admin-stat"><strong>1</strong><span>Inactive Service Provider</span></div>
-      <div className="admin-stat"><strong>2</strong><span>Blocked Service Providers</span></div>
+      <div className="admin-stat"><strong>{activeProviderCount}</strong><span>Active Service Providers</span></div>
+      <div className="admin-stat"><strong>{inactiveProviderCount}</strong><span>Inactive Service Providers</span></div>
+      <div className="admin-stat"><strong>{blockedProviderCount}</strong><span>Blocked Service Providers</span></div>
     </div>
     <AdminTableSection title="Active Service Providers" description="Monitor approved service providers profiles.">
       <div className="admin-table-search"><label><span>Search</span><input type="search" value={activeProviderSearch} onChange={(event) => setActiveProviderSearch(event.target.value)} placeholder="Name or mobile number" aria-label="Search Active Service Providers by name or mobile number" /></label></div>
@@ -2254,14 +2475,14 @@ function AdminDashboard({ initialView = 'providers', onViewChange, onSignOut, on
   </div>
 }
 
-function AdminServiceProviders({ providers }) {
+function AdminServiceProviders({ customers }) {
   const [search, setSearch] = useState('')
-  const filteredCustomers = filterAdminProviderRows(providers, search)
+  const filteredCustomers = filterAdminProviderRows(customers, search)
 
   return <div>
     <AdminTableSection description="Customer names and contact details.">
       <div className="admin-table-search"><label><span>Search</span><input type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Customer name or mobile number" aria-label="Search customer records by customer name or mobile number" /></label></div>
-      <div className="admin-table-wrap"><table className="admin-table service-provider-list-table"><thead><tr><th>Customer Name</th><th>Mobile Number</th><th>Address</th></tr></thead><tbody>{filteredCustomers.length ? filteredCustomers.map((provider) => <tr key={provider.id}><td><strong>{provider.name}</strong></td><td>{provider.mobile}</td><td>{provider.address}</td></tr>) : <tr><td className="admin-table-empty" colSpan={3}>No customer records match your search.</td></tr>}</tbody></table></div>
+      <div className="admin-table-wrap"><table className="admin-table service-provider-list-table"><thead><tr><th>Customer Name</th><th>Mobile Number</th><th>Address</th></tr></thead><tbody>{filteredCustomers.length ? filteredCustomers.map((customer) => <tr key={customer.id}><td><strong>{customer.name}</strong></td><td>{customer.mobile}</td><td>{customer.address}</td></tr>) : <tr><td className="admin-table-empty" colSpan={3}>No customer records found.</td></tr>}</tbody></table></div>
     </AdminTableSection>
   </div>
 }
@@ -2285,10 +2506,6 @@ function EmployerProfilesTable({ employers }) {
       </tr>) : <tr><td className="admin-table-empty" colSpan={4}>No employer profiles found.</td></tr>}</tbody>
     </table>
   </div>
-}
-
-function ScanCodeStatus({ uploaded }) {
-  return <span className={uploaded ? 'scan-code-status uploaded' : 'scan-code-status'}><QrCode size={17} />{uploaded ? 'Uploaded' : 'Not uploaded'}</span>
 }
 
 function AdminPaymentStatus({ providers }) {
@@ -2318,7 +2535,7 @@ function AdminPaymentStatus({ providers }) {
     { key: 'providerReceives', label: 'Service Provider Receives', value: (provider) => getPaymentAmounts(provider).providerReceives, sortType: 'number', render: (provider) => `₹${getPaymentAmounts(provider).providerReceives.toLocaleString('en-IN')}` },
     { key: 'platformFee', label: 'Platform Fee', value: (provider) => getPaymentAmounts(provider).platformFee, sortType: 'number', render: (provider) => `₹${getPaymentAmounts(provider).platformFee.toLocaleString('en-IN')}` },
   ]
-  const filteredProviders = providers.filter((provider) => {
+  const filteredProviders = providers.filter((provider) => provider.paymentStatus).filter((provider) => {
     const paymentDate = parseAdminApprovalDate(provider.paymentDate)
     if (!paymentDate) return !hasDateFilter
     const paymentDay = formatAdminDateInputValue(paymentDate)
