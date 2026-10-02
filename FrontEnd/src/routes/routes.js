@@ -29,7 +29,6 @@ export function getRouteState(pathname = window.location.pathname) {
   const path = pathname.toLowerCase()
   if (path === '/signin') return { entryScreen: 'signin', activeForm: null, submitted: false, adminView: 'providers' }
   if (path === '/signup') return { entryScreen: 'signup', activeForm: null, submitted: false, adminView: 'providers' }
-  /*if (path === '/signout') return { entryScreen: 'signout', activeForm: null, submitted: false, adminView: 'providers' }*/
   if (path === '/admin/paymentstatus') return { entryScreen: 'app', activeForm: 'admin', submitted: true, adminView: 'payments' }
   if (path === '/admin/employers') return { entryScreen: 'app', activeForm: 'admin', submitted: true, adminView: 'employers' }
   if (path === '/admin/customers' || path === '/admin/serviceproviders') return { entryScreen: 'app', activeForm: 'admin', submitted: true, adminView: 'service-providers' }
