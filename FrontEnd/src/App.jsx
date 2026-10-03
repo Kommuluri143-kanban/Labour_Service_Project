@@ -35,7 +35,7 @@ export default function App() {
   const [profileOpen, setProfileOpen] = useState(false)
   const [resignationSubmitted, setResignationSubmitted] = useState(false)
   const [resignationError, setResignationError] = useState('')
-  const [accountClosed, setAccountClosed] = useState(false)
+  const [closeAccountDialogOpen, setCloseAccountDialogOpen] = useState(false)
   const [closeAccountError, setCloseAccountError] = useState('')
   const [wNPocketBalance, setWNPocketBalance] = useState(0)
   const [wNPocketActivity, setWNPocketActivity] = useState([])
@@ -67,7 +67,7 @@ export default function App() {
     if (routeState.profileAccountType) setProfileAccountType(routeState.profileAccountType)
     setResignationSubmitted(false)
     setResignationError('')
-    setAccountClosed(false)
+    setCloseAccountDialogOpen(false)
     setCloseAccountError('')
     setMenuOpen(false)
     setProfileOpen(false)
@@ -145,17 +145,15 @@ export default function App() {
   }
 
   const openCloseAccountDialog = () => {
-    setAccountClosed(false)
+    setCloseAccountDialogOpen(true)
     setCloseAccountError('')
-    navigateTo('/CloseAccount')
   }
 
-  /*const closeCloseAccountDialog = () => {
-    const wasClosed = accountClosed
-    setAccountClosed(false)
+  const closeCloseAccountDialog = () => {
+    setCloseAccountDialogOpen(false)
     setCloseAccountError('')
-    navigateTo(wasClosed ? '/SignOut' : homePathForProfile(profileAccountType))
-  }*/
+    if (activeForm === 'close-account') navigateTo(homePathForProfile(profileAccountType))
+  }
 
   const confirmCloseAccount = () => {
     if (!canCloseAccount) return
@@ -178,7 +176,8 @@ export default function App() {
       setSignedIn(false)
       setProfileOpen(false)
       setCloseAccountError('')
-      setAccountClosed(true)
+      setCloseAccountDialogOpen(false)
+      navigateTo('/')
     } catch {
       if (originalRegisteredProfiles !== null) {
         try { window.localStorage.setItem(registeredProfilesKey, originalRegisteredProfiles) } catch { /* Keep the account closure failure visible if storage cannot be restored. */ }
@@ -292,9 +291,12 @@ export default function App() {
   if (activeForm === 'feedback') return canAccessContactFeedback ? <FeedbackPage>{renderRegistration('feedback')}</FeedbackPage> : <AppHomePage {...homePageProps} />
   if (activeForm === 'payment') return canAccessPaymentExchange ? <PaymentExchangePage>{renderRegistration('payment')}</PaymentExchangePage> : <AppHomePage {...homePageProps} />
   if (activeForm === 'wnpocket') return canAccessWNPocket ? <WNPocketPage><WNPocketModal profile={userProfile} balance={wNPocketBalance} activity={wNPocketActivity} onOpenCashInHandPayment={() => openForm('payment', 'provider-to-app')} onClose={() => navigateTo('/Home')} /></WNPocketPage> : <AppHomePage {...homePageProps} />
-  if (activeForm === 'close-account') return canCloseAccount ? <CloseAccountPage><CloseAccountConfirmationModal closed={accountClosed} error={closeAccountError} onConfirm={confirmCloseAccount} onClose={closeCloseAccountDialog} /></CloseAccountPage> : <AppHomePage {...homePageProps} />
+  if (activeForm === 'close-account') return canCloseAccount ? <CloseAccountPage><CloseAccountConfirmationModal error={closeAccountError} onConfirm={confirmCloseAccount} onClose={closeCloseAccountDialog} /></CloseAccountPage> : <AppHomePage {...homePageProps} />
   if (activeForm === 'resign') return signedIn && profileAccountType === 'Employer' ? <ResignPage><ResignationConfirmationModal accountType={profileAccountType} submitted={resignationSubmitted} error={resignationError} onConfirm={submitResignationRequest} onClose={closeResignationDialog} /></ResignPage> : <AppHomePage {...homePageProps} />
   if (activeForm === 'service-history') return canViewServiceHistory ? <ServiceHistoryPage><ServiceHistoryModal accountType={profileAccountType} onClose={() => navigateTo(homePathForProfile(profileAccountType))} /></ServiceHistoryPage> : <AppHomePage {...homePageProps} />
 
-  return <AppHomePage {...homePageProps} />
+  return <>
+    <AppHomePage {...homePageProps} />
+    {closeAccountDialogOpen && <CloseAccountConfirmationModal error={closeAccountError} onConfirm={confirmCloseAccount} onClose={closeCloseAccountDialog} />}
+  </>
 }

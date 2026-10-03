@@ -264,24 +264,17 @@ export function ResignationConfirmationModal({ accountType, submitted, error, on
   </div>
 }
 
-export function CloseAccountConfirmationModal({ closed, error, onConfirm, onClose }) {
+export function CloseAccountConfirmationModal({ error, onConfirm, onClose }) {
   return <div className="admin-confirm-backdrop" role="presentation">
-    <section className="admin-confirm-dialog close-account-dialog" role={closed ? 'dialog' : 'alertdialog'} aria-modal="true" aria-labelledby="close-account-dialog-title">
-      {closed ? <>
-        <p className="eyebrow">Account closed</p>
-        <h3 id="close-account-dialog-title">Your account is closed</h3>
-        <p>Your profile and saved sign-in session have been removed.</p>
-        <div className="admin-confirm-actions"><button className="table-action approve" type="button" onClick={onClose}>Close</button></div>
-      </> : <>
-        <p className="eyebrow">Permanent action</p>
-        <h3 id="close-account-dialog-title">Close your account?</h3>
-        <p>This permanently closes your account and removes its saved profile. You will be signed out.</p>
-        {error && <p className="resignation-error" role="alert">{error}</p>}
-        <div className="admin-confirm-actions">
-          <button className="table-action block" type="button" onClick={onConfirm}>Confirm</button>
-          <button className="table-action" type="button" onClick={onClose}>Cancel</button>
-        </div>
-      </>}
+    <section className="admin-confirm-dialog close-account-dialog" role="alertdialog" aria-modal="true" aria-labelledby="close-account-dialog-title">
+      <p className="eyebrow">Permanent action</p>
+      <h3 id="close-account-dialog-title">Close your account?</h3>
+      <p>This permanently closes your account and removes its saved profile. You will be signed out.</p>
+      {error && <p className="resignation-error" role="alert">{error}</p>}
+      <div className="admin-confirm-actions">
+        <button className="table-action block" type="button" onClick={onConfirm}>Confirm</button>
+        <button className="table-action" type="button" onClick={onClose}>Cancel</button>
+      </div>
     </section>
   </div>
 }
