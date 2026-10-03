@@ -1,0 +1,4 @@
+@import '../routePageBase.css';
+
+.route-page--payment-status { background: #f4f7f4; }
+.route-page--payment-status .modal { width: min(100%, 1240px); }

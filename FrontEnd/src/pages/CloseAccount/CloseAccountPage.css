@@ -1,0 +1,4 @@
+@import '../routePageBase.css';
+
+.route-page--close-account { background: #f4f7f4; }
+.route-page--close-account .modal { width: min(100%, 720px); }
