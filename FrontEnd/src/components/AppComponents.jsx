@@ -3,7 +3,7 @@ import { ArrowRight, CalendarDays, Check, ChevronDown, Pencil, RefreshCw, UserRo
 import { toDateInputValue, getSixMonthsAgo, formatServiceDate } from '../utils/dateUtils.js'
 import { playRequestAlertTone } from '../utils/audio.js'
 
-export function ProfilePanel({ accountType, profile, availability, onAvailabilityChange, onClose, incomingServiceRequest = null, acceptedServiceProvider = null, onAcceptServiceRequest, onCancelServiceRequest, onCloseAcceptedServiceRequest }) {
+export function ProfilePanel({ accountType, profile, availability, onAvailabilityChange, onClose, onOpenAcceptedServices, incomingServiceRequest = null, acceptedServiceProvider = null, onAcceptServiceRequest, onCancelServiceRequest, onCloseAcceptedServiceRequest }) {
   const role = accountType || 'Customer'
   const isProvider = role === 'Service Provider'
   const isCustomer = role === 'Customer'
@@ -46,7 +46,7 @@ export function ProfilePanel({ accountType, profile, availability, onAvailabilit
     </div>
     <div className="profile-fields">
       {isProvider && <label>Request accept status<select value={availability} onChange={(event) => onAvailabilityChange(event.target.value)}><option>Active</option><option>Inactive</option></select><ChevronDown className="select-icon" size={16} /></label>}
-      {(isProvider || isCustomer) && <ProfileRequestActions role={role} serviceAmount={serviceAmount} onServiceAmountChange={setServiceAmount} serviceOfferStatus={serviceOfferStatus} onServiceOfferStatusChange={setServiceOfferStatus} />}
+      {(isProvider || isCustomer) && <ProfileRequestActions role={role} serviceAmount={serviceAmount} onServiceAmountChange={setServiceAmount} serviceOfferStatus={serviceOfferStatus} onServiceOfferStatusChange={setServiceOfferStatus} onOpenAcceptedServices={onOpenAcceptedServices} />}
     </div>
     {isProvider && <>
       <section className="incoming-request-empty" aria-live="polite"><strong>Incoming service requests</strong><p>When a request is assigned to you, an alert will show the Customer Name and Customer Address here.</p></section>
@@ -177,7 +177,7 @@ export function ProviderIncomingRequestModal({ request, playSound = true, onAcce
       </dl>
       <div className="request-alert-actions">
         <button type="button" className="request-alert-cancel" onClick={() => { onCancel?.(); setIsOpen(false) }}>Cancel</button>
-        <button type="button" className="request-alert-accept" onClick={() => { onAccept?.(); setIsOpen(false) }}>Accept</button>
+        <button type="button" className="request-alert-accept" onClick={() => { onAccept?.(request); setIsOpen(false) }}>Accept</button>
       </div>
     </section>
   </div>
@@ -279,7 +279,7 @@ export function CloseAccountConfirmationModal({ error, onConfirm, onClose }) {
   </div>
 }
 
-export function ProfileRequestActions({ role, serviceAmount, onServiceAmountChange, serviceOfferStatus, onServiceOfferStatusChange }) {
+export function ProfileRequestActions({ role, serviceAmount, onServiceAmountChange, serviceOfferStatus, onServiceOfferStatusChange, onOpenAcceptedServices }) {
   const isProvider = role === 'Service Provider'
   const [decision, setDecision] = useState('')
   const hasServiceAmount = Number(serviceAmount) > 0
@@ -297,9 +297,9 @@ export function ProfileRequestActions({ role, serviceAmount, onServiceAmountChan
       : 'Enter an amount and approve it to send it to the customer.'
   const decisionPrompt = decision === 'approved'
     ? 'You approved this service amount.'
-    : decision === 'cancelled'
-      ? 'You cancelled this service.'
-      : 'You rejected this service amount.'
+      : decision === 'cancelled'
+        ? 'You cancelled this service.'
+        : 'You rejected this service amount.'
   const providerDisabledReason = 'No service request is currently assigned to this service provider.'
   const message = isProvider ? providerPrompt : decision ? decisionPrompt : customerPrompt
 
@@ -311,7 +311,7 @@ export function ProfileRequestActions({ role, serviceAmount, onServiceAmountChan
     <p>{message}</p>
     <div className={isProvider ? 'profile-request-buttons provider' : 'profile-request-buttons'}>
       {isProvider ? <>
-        <button type="button" className="profile-request-accept" disabled title={providerDisabledReason}>Accepted Service List</button>
+        <button type="button" className="profile-request-accept" onClick={onOpenAcceptedServices}>Accepted Services List</button>
         <button type="button" className="profile-request-call" disabled title={providerDisabledReason}>Call with Customer</button>
       </> : <>
         <button type="button" disabled={!customerCanReviewOffer || Boolean(decision)} onClick={() => setDecision('approved')}>Approve</button>

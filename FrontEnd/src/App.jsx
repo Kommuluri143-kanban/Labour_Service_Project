@@ -19,7 +19,9 @@ import { ServiceHistoryPage } from './pages/ServiceHistory/ServiceHistoryPage.js
 import { ContactUsPage } from './pages/ContactUs/ContactUsPage.jsx'
 import { PaymentExchangePage } from './pages/PaymentExchange/PaymentExchangePage.jsx'
 import { FeedbackPage } from './pages/Feedback/FeedbackPage.jsx'
+import { AcceptedServicesPage } from './pages/AcceptedServices/AcceptedServicesPage.jsx'
 import { activeProfileKey, registeredProfilesKey, resignationRequestsKey, normalizeMobileNumber, readRegisteredProfiles, readActiveProfile } from './data/profileStore.js'
+import { addAcceptedServiceRequest } from './data/acceptedServiceStore.js'
 import { getAppCommissionRate } from './utils/finance.js'
 import { WNPocketModal, ServiceHistoryModal, ResignationConfirmationModal, CloseAccountConfirmationModal } from './components/AppComponents.jsx'
 import { RegistrationModal } from './components/RegistrationModal.jsx'
@@ -232,6 +234,17 @@ export default function App() {
     navigateTo(adminViewPaths[view] || adminViewPaths.providers)
   }
 
+  const handleAcceptServiceRequest = (request) => {
+    if (!signedIn || profileAccountType !== 'Service Provider') return
+    addAcceptedServiceRequest(userProfile, request)
+    setUserProfile((current) => {
+      if (!current) return current
+      const nextProfile = { ...current, incomingServiceRequest: null }
+      try { window.localStorage.setItem(activeProfileKey, JSON.stringify(nextProfile)) } catch { /* Keep the active session usable when storage is unavailable. */ }
+      return nextProfile
+    })
+  }
+
   const handleHomeSignOut = () => {
     clearSession()
     navigateTo('/SignOut')
@@ -263,6 +276,10 @@ export default function App() {
     canAccessCustomerServices, canAccessPaymentExchange, canAccessContactFeedback, canAccessWNPocket,
     canCloseAccount, showProfilePanel, openForm,
     onOpenServiceHistory: () => navigateTo('/Servicehistory'),
+    onOpenAcceptedServices: () => {
+      if (signedIn && profileAccountType === 'Service Provider') navigateTo('/AcceptedServices')
+    },
+    onAcceptServiceRequest: handleAcceptServiceRequest,
     onOpenWNPocket: () => navigateTo('/WNPocket'),
     onOpenCloseAccount: openCloseAccountDialog,
     onOpenResign: openResignationDialog,
@@ -294,6 +311,9 @@ export default function App() {
   if (activeForm === 'close-account') return canCloseAccount ? <CloseAccountPage><CloseAccountConfirmationModal error={closeAccountError} onConfirm={confirmCloseAccount} onClose={closeCloseAccountDialog} /></CloseAccountPage> : <AppHomePage {...homePageProps} />
   if (activeForm === 'resign') return signedIn && profileAccountType === 'Employer' ? <ResignPage><ResignationConfirmationModal accountType={profileAccountType} submitted={resignationSubmitted} error={resignationError} onConfirm={submitResignationRequest} onClose={closeResignationDialog} /></ResignPage> : <AppHomePage {...homePageProps} />
   if (activeForm === 'service-history') return canViewServiceHistory ? <ServiceHistoryPage><ServiceHistoryModal accountType={profileAccountType} onClose={() => navigateTo(homePathForProfile(profileAccountType))} /></ServiceHistoryPage> : <AppHomePage {...homePageProps} />
+  if (activeForm === 'accepted-services') return signedIn && profileAccountType === 'Service Provider'
+    ? <AcceptedServicesPage profile={userProfile} onBack={() => navigateTo(homePathForProfile(profileAccountType))} />
+    : <AppHomePage {...homePageProps} />
 
   return <>
     <AppHomePage {...homePageProps} />

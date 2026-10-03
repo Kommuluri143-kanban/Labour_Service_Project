@@ -10,7 +10,7 @@ export function AppHomePage({
   setUserProfile, canOpenProviderRegistration, canViewServiceHistory, canViewEmployerDirectories,
   canAccessCustomerServices, canAccessPaymentExchange, canAccessContactFeedback, canAccessWNPocket,
   canCloseAccount, showProfilePanel, openForm, onOpenServiceHistory, onOpenWNPocket,
-  onOpenCloseAccount, onOpenResign, onSignOut, approvedRequests,
+  onOpenCloseAccount, onOpenResign, onOpenAcceptedServices, onAcceptServiceRequest, onSignOut, approvedRequests,
 }) {
   const canAccessAdmin = !signedIn || profileAccountType === 'Admin'
   return (
@@ -44,7 +44,7 @@ export function AppHomePage({
             <ChevronDown size={16} className={profileOpen ? 'profile-chevron open' : 'profile-chevron'} />
           </button>
           <button className="profile-signout" onClick={onSignOut}>Sign out</button>
-          {showProfilePanel && <ProfilePanel key={profileAccountType} accountType={profileAccountType} profile={userProfile} availability={providerAvailability} onAvailabilityChange={setProviderAvailability} onClose={() => setProfileOpen(false)} incomingServiceRequest={userProfile?.incomingServiceRequest} acceptedServiceProvider={profileAccountType === 'Customer' ? acceptedServiceProvider || userProfile?.acceptedServiceProvider : null} onAcceptServiceRequest={() => { setAcceptedServiceProvider({ name: userProfile?.fullName || 'Service Provider', address: userProfile?.address || [userProfile?.village, userProfile?.mandal, userProfile?.division].filter(Boolean).join(', ') || 'Address not provided' }); setUserProfile((current) => current ? { ...current, incomingServiceRequest: null } : current) }} onCancelServiceRequest={() => setUserProfile((current) => current ? { ...current, incomingServiceRequest: null } : current)} onCloseAcceptedServiceRequest={() => { setAcceptedServiceProvider(null); setUserProfile((current) => current ? { ...current, acceptedServiceProvider: null } : current) }} />}
+          {showProfilePanel && <ProfilePanel key={profileAccountType} accountType={profileAccountType} profile={userProfile} availability={providerAvailability} onAvailabilityChange={setProviderAvailability} onClose={() => setProfileOpen(false)} onOpenAcceptedServices={onOpenAcceptedServices} incomingServiceRequest={userProfile?.incomingServiceRequest} acceptedServiceProvider={profileAccountType === 'Customer' ? acceptedServiceProvider || userProfile?.acceptedServiceProvider : null} onAcceptServiceRequest={onAcceptServiceRequest} onCancelServiceRequest={() => setUserProfile((current) => current ? { ...current, incomingServiceRequest: null } : current)} onCloseAcceptedServiceRequest={() => { setAcceptedServiceProvider(null); setUserProfile((current) => current ? { ...current, acceptedServiceProvider: null } : current) }} />}
         </div>
       </header>
 

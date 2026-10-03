@@ -9,6 +9,7 @@ export const formPaths = {
   'close-account': '/CloseAccount',
   resign: '/Resign',
   'service-history': '/Servicehistory',
+  'accepted-services': '/AcceptedServices',
 }
 
 export const adminViewPaths = {
